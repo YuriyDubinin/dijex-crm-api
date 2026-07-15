@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_tasks_deal;
+DROP INDEX IF EXISTS idx_tasks_client;
+ALTER TABLE tasks DROP COLUMN IF EXISTS deal_id;
+ALTER TABLE tasks DROP COLUMN IF EXISTS client_id;
