@@ -52,6 +52,16 @@ type ServiceChecker interface {
 	GetByID(ctx context.Context, customerID, id uuid.UUID) (*domain.Service, error)
 }
 
+// ProcessChecker — узкий контракт: реализуется *postgres.ProcessRepository.
+type ProcessChecker interface {
+	GetByID(ctx context.Context, customerID, id uuid.UUID) (*domain.Process, error)
+}
+
+// ProcessStageChecker — узкий контракт: реализуется *postgres.ProcessRepository.
+type ProcessStageChecker interface {
+	GetStageByID(ctx context.Context, customerID, id uuid.UUID) (*domain.ProcessStage, error)
+}
+
 // EntityResolver — узкий контракт: реализуется *postgres.EntityRepository.
 type EntityResolver interface {
 	ResolveType(ctx context.Context, customerID, entityID uuid.UUID) (domain.EntityType, error)
@@ -109,6 +119,36 @@ func ensureServiceOwned(ctx context.Context, checker ServiceChecker, customerID 
 	}
 	if _, err := checker.GetByID(ctx, customerID, *serviceID); err != nil {
 		return &domain.ValidationError{Field: "service_id", Message: "service not found in this tenant"}
+	}
+	return nil
+}
+
+// ensureProcessOwned проверяет, что processID (если задан) принадлежит тенанту.
+func ensureProcessOwned(ctx context.Context, checker ProcessChecker, customerID uuid.UUID, processID *uuid.UUID) *domain.ValidationError {
+	if processID == nil {
+		return nil
+	}
+	if _, err := checker.GetByID(ctx, customerID, *processID); err != nil {
+		return &domain.ValidationError{Field: "process_id", Message: "process not found in this tenant"}
+	}
+	return nil
+}
+
+// ensureProcessStageOwned проверяет, что этап (если задан) принадлежит тенанту
+// И относится к указанному процессу. Этап нельзя задать без процесса.
+func ensureProcessStageOwned(ctx context.Context, checker ProcessStageChecker, customerID uuid.UUID, stageID, processID *uuid.UUID) *domain.ValidationError {
+	if stageID == nil {
+		return nil
+	}
+	if processID == nil {
+		return &domain.ValidationError{Field: "process_stage_id", Message: "process_id is required when process_stage_id is set"}
+	}
+	stage, err := checker.GetStageByID(ctx, customerID, *stageID)
+	if err != nil {
+		return &domain.ValidationError{Field: "process_stage_id", Message: "process stage not found in this tenant"}
+	}
+	if stage.ProcessID != *processID {
+		return &domain.ValidationError{Field: "process_stage_id", Message: "process stage does not belong to the given process"}
 	}
 	return nil
 }

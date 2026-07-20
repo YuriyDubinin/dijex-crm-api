@@ -19,6 +19,7 @@ type CreateDealInput struct {
 	ProjectID       *uuid.UUID
 	ClientID        *uuid.UUID
 	ServiceID       *uuid.UUID
+	ProcessID       *uuid.UUID
 	Title           string
 	Description     string
 	Status          string
@@ -37,6 +38,7 @@ type UpdateDealInput struct {
 	ProjectID       *uuid.UUID
 	ClientID        *uuid.UUID
 	ServiceID       *uuid.UUID
+	ProcessID       *uuid.UUID
 	Title           string
 	Description     string
 	Status          string
@@ -55,6 +57,7 @@ type ListDealsInput struct {
 	ProjectID  *uuid.UUID
 	ClientID   *uuid.UUID
 	ServiceID  *uuid.UUID
+	ProcessID  *uuid.UUID
 	Status     string
 	Type       string
 	AssignedTo *uuid.UUID
@@ -68,6 +71,7 @@ type DealItem struct {
 	ProjectID       *uuid.UUID
 	ClientID        *uuid.UUID
 	ServiceID       *uuid.UUID
+	ProcessID       *uuid.UUID
 	Title           string
 	Description     string
 	Status          string
@@ -97,17 +101,18 @@ type DeleteDealOutput struct {
 // ───────────────────────── Service ─────────────────────────
 
 type DealService struct {
-	repo     domain.DealRepository
-	projects ProjectChecker
-	clients  ClientChecker
-	services ServiceChecker
-	users    UserChecker
-	logger   *slog.Logger
-	clock    func() time.Time
+	repo      domain.DealRepository
+	projects  ProjectChecker
+	clients   ClientChecker
+	services  ServiceChecker
+	processes ProcessChecker
+	users     UserChecker
+	logger    *slog.Logger
+	clock     func() time.Time
 }
 
-func NewDealService(repo domain.DealRepository, projects ProjectChecker, clients ClientChecker, services ServiceChecker, users UserChecker, logger *slog.Logger) *DealService {
-	return &DealService{repo: repo, projects: projects, clients: clients, services: services, users: users, logger: logger, clock: time.Now}
+func NewDealService(repo domain.DealRepository, projects ProjectChecker, clients ClientChecker, services ServiceChecker, processes ProcessChecker, users UserChecker, logger *slog.Logger) *DealService {
+	return &DealService{repo: repo, projects: projects, clients: clients, services: services, processes: processes, users: users, logger: logger, clock: time.Now}
 }
 
 func (s *DealService) CreateDeal(ctx context.Context, customerID uuid.UUID, in CreateDealInput) (*DealItem, error) {
@@ -118,7 +123,7 @@ func (s *DealService) CreateDeal(ctx context.Context, customerID uuid.UUID, in C
 	in.Currency = normalizeCurrency(in.Currency)
 
 	errs := validateDeal(in.Title, in.Status, in.Type, in.Currency, in.Amount, in.Probability, in.Attributes)
-	errs = append(errs, dealOwnershipErrors(ctx, s, customerID, in.ProjectID, in.ClientID, in.ServiceID, in.AssignedTo)...)
+	errs = append(errs, dealOwnershipErrors(ctx, s, customerID, in.ProjectID, in.ClientID, in.ServiceID, in.ProcessID, in.AssignedTo)...)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -135,6 +140,7 @@ func (s *DealService) CreateDeal(ctx context.Context, customerID uuid.UUID, in C
 		ProjectID:       in.ProjectID,
 		ClientID:        in.ClientID,
 		ServiceID:       in.ServiceID,
+		ProcessID:       in.ProcessID,
 		Title:           in.Title,
 		Description:     in.Description,
 		Status:          in.Status,
@@ -165,7 +171,7 @@ func (s *DealService) UpdateDeal(ctx context.Context, customerID uuid.UUID, in U
 	in.Currency = normalizeCurrency(in.Currency)
 
 	errs := validateDeal(in.Title, in.Status, in.Type, in.Currency, in.Amount, in.Probability, in.Attributes)
-	errs = append(errs, dealOwnershipErrors(ctx, s, customerID, in.ProjectID, in.ClientID, in.ServiceID, in.AssignedTo)...)
+	errs = append(errs, dealOwnershipErrors(ctx, s, customerID, in.ProjectID, in.ClientID, in.ServiceID, in.ProcessID, in.AssignedTo)...)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -181,6 +187,7 @@ func (s *DealService) UpdateDeal(ctx context.Context, customerID uuid.UUID, in U
 		ProjectID:       in.ProjectID,
 		ClientID:        in.ClientID,
 		ServiceID:       in.ServiceID,
+		ProcessID:       in.ProcessID,
 		Title:           in.Title,
 		Description:     in.Description,
 		Status:          in.Status,
@@ -215,6 +222,7 @@ func (s *DealService) ListDeals(ctx context.Context, customerID uuid.UUID, in Li
 		ProjectID:  in.ProjectID,
 		ClientID:   in.ClientID,
 		ServiceID:  in.ServiceID,
+		ProcessID:  in.ProcessID,
 		Status:     status,
 		Type:       dealType,
 		AssignedTo: in.AssignedTo,
@@ -279,7 +287,7 @@ func validateDeal(title, status, dealType, currency string, amount *float64, pro
 }
 
 // dealOwnershipErrors собирает ошибки принадлежности связанных сущностей тенанту.
-func dealOwnershipErrors(ctx context.Context, s *DealService, customerID uuid.UUID, projectID, clientID, serviceID, assignedTo *uuid.UUID) domain.ValidationErrors {
+func dealOwnershipErrors(ctx context.Context, s *DealService, customerID uuid.UUID, projectID, clientID, serviceID, processID, assignedTo *uuid.UUID) domain.ValidationErrors {
 	var errs domain.ValidationErrors
 	if ve := ensureProjectOwned(ctx, s.projects, customerID, projectID); ve != nil {
 		errs = append(errs, ve)
@@ -288,6 +296,9 @@ func dealOwnershipErrors(ctx context.Context, s *DealService, customerID uuid.UU
 		errs = append(errs, ve)
 	}
 	if ve := ensureServiceOwned(ctx, s.services, customerID, serviceID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if ve := ensureProcessOwned(ctx, s.processes, customerID, processID); ve != nil {
 		errs = append(errs, ve)
 	}
 	if ve := ensureUserOwned(ctx, s.users, customerID, assignedTo, "assigned_to"); ve != nil {
@@ -302,6 +313,7 @@ func dealToItem(d *domain.Deal) *DealItem {
 		ProjectID:       d.ProjectID,
 		ClientID:        d.ClientID,
 		ServiceID:       d.ServiceID,
+		ProcessID:       d.ProcessID,
 		Title:           d.Title,
 		Description:     d.Description,
 		Status:          d.Status,

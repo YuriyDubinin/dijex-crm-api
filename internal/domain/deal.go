@@ -16,6 +16,7 @@ type Deal struct {
 	ProjectID       *uuid.UUID
 	ClientID        *uuid.UUID
 	ServiceID       *uuid.UUID // услуга, которую продаём/покупаем в рамках сделки
+	ProcessID       *uuid.UUID // процесс, в рамках которого идёт сделка
 	Title           string
 	Description     string
 	Status          string // ENUM deal_status
@@ -76,6 +77,7 @@ type DealListFilter struct {
 	ProjectID  *uuid.UUID
 	ClientID   *uuid.UUID
 	ServiceID  *uuid.UUID
+	ProcessID  *uuid.UUID
 	Status     string
 	Type       string
 	AssignedTo *uuid.UUID

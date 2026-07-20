@@ -24,7 +24,7 @@ func NewDealRepository(pool *pgxpool.Pool) *DealRepository {
 }
 
 const dealColumns = `
-	id, customer_id, project_id, client_id, service_id, title,
+	id, customer_id, project_id, client_id, service_id, process_id, title,
 	COALESCE(description, ''), status::text, type::text, amount::float8, currency, probability,
 	expected_close_at, closed_at, assigned_to, created_by,
 	attributes::text, created_at, updated_at, deleted_at
@@ -36,7 +36,7 @@ func scanDeal(row pgx.Row) (*domain.Deal, error) {
 		attr []byte
 	)
 	err := row.Scan(
-		&d.ID, &d.CustomerID, &d.ProjectID, &d.ClientID, &d.ServiceID, &d.Title,
+		&d.ID, &d.CustomerID, &d.ProjectID, &d.ClientID, &d.ServiceID, &d.ProcessID, &d.Title,
 		&d.Description, &d.Status, &d.Type, &d.Amount, &d.Currency, &d.Probability,
 		&d.ExpectedCloseAt, &d.ClosedAt, &d.AssignedTo, &d.CreatedBy,
 		&attr, &d.CreatedAt, &d.UpdatedAt, &d.DeletedAt,
@@ -53,14 +53,14 @@ func scanDeal(row pgx.Row) (*domain.Deal, error) {
 func (r *DealRepository) Create(ctx context.Context, d *domain.Deal) error {
 	const query = `
 		INSERT INTO deals
-			(id, customer_id, project_id, client_id, service_id, title, description, status, type, amount, currency,
+			(id, customer_id, project_id, client_id, service_id, process_id, title, description, status, type, amount, currency,
 			 probability, expected_close_at, closed_at, assigned_to, created_by, attributes, created_at, updated_at)
 		VALUES
-			($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8::deal_status, $9::deal_type, $10::numeric, $11,
-			 $12, $13, $14, $15, $16, $17::jsonb, $18, $19)
+			($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9::deal_status, $10::deal_type, $11::numeric, $12,
+			 $13, $14, $15, $16, $17, $18::jsonb, $19, $20)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		d.ID, d.CustomerID, d.ProjectID, d.ClientID, d.ServiceID, d.Title, d.Description, d.Status, d.Type, d.Amount, d.Currency,
+		d.ID, d.CustomerID, d.ProjectID, d.ClientID, d.ServiceID, d.ProcessID, d.Title, d.Description, d.Status, d.Type, d.Amount, d.Currency,
 		d.Probability, d.ExpectedCloseAt, d.ClosedAt, d.AssignedTo, d.CreatedBy, jsonbArg(d.Attributes), d.CreatedAt, d.UpdatedAt,
 	)
 	if err != nil {
@@ -104,6 +104,10 @@ func (r *DealRepository) List(ctx context.Context, customerID uuid.UUID, f domai
 	if f.ServiceID != nil {
 		args = append(args, *f.ServiceID)
 		conds = append(conds, fmt.Sprintf("service_id = $%d", len(args)))
+	}
+	if f.ProcessID != nil {
+		args = append(args, *f.ProcessID)
+		conds = append(conds, fmt.Sprintf("process_id = $%d", len(args)))
 	}
 	if f.Status != "" {
 		args = append(args, f.Status)
@@ -178,22 +182,23 @@ func (r *DealRepository) Update(ctx context.Context, customerID uuid.UUID, d *do
 			project_id        = $1,
 			client_id         = $2,
 			service_id        = $3,
-			title             = $4,
-			description       = NULLIF($5, ''),
-			status            = $6::deal_status,
-			type              = $7::deal_type,
-			amount            = $8::numeric,
-			currency          = $9,
-			probability       = $10,
-			expected_close_at = $11,
-			closed_at         = $12,
-			assigned_to       = $13,
-			attributes        = $14::jsonb
-		WHERE id = $15 AND customer_id = $16 AND deleted_at IS NULL
+			process_id        = $4,
+			title             = $5,
+			description       = NULLIF($6, ''),
+			status            = $7::deal_status,
+			type              = $8::deal_type,
+			amount            = $9::numeric,
+			currency          = $10,
+			probability       = $11,
+			expected_close_at = $12,
+			closed_at         = $13,
+			assigned_to       = $14,
+			attributes        = $15::jsonb
+		WHERE id = $16 AND customer_id = $17 AND deleted_at IS NULL
 		RETURNING created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query,
-		d.ProjectID, d.ClientID, d.ServiceID, d.Title, d.Description, d.Status, d.Type, d.Amount, d.Currency, d.Probability,
+		d.ProjectID, d.ClientID, d.ServiceID, d.ProcessID, d.Title, d.Description, d.Status, d.Type, d.Amount, d.Currency, d.Probability,
 		d.ExpectedCloseAt, d.ClosedAt, d.AssignedTo, jsonbArg(d.Attributes), d.ID, customerID,
 	).Scan(&d.CreatedAt, &d.UpdatedAt)
 	if err != nil {

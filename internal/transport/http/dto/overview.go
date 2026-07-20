@@ -48,6 +48,38 @@ type ClientOverviewHTTPResponse struct {
 	Links   []LinkHTTPResponse   `json:"links"`
 }
 
+// ProcessOverviewHTTPResponse — процесс + этапы + связанные сущности одним ответом.
+type ProcessOverviewHTTPResponse struct {
+	Process ProcessHTTPResponse        `json:"process"`
+	Stages  []ProcessStageHTTPResponse `json:"stages"`
+	Deals   []DealHTTPResponse         `json:"deals"`
+	Tasks   []TaskHTTPResponse         `json:"tasks"`
+	Links   []LinkHTTPResponse         `json:"links"`
+}
+
+func FromProcessOverview(o *service.ProcessOverviewOutput) ProcessOverviewHTTPResponse {
+	resp := ProcessOverviewHTTPResponse{
+		Process: fromProcessItem(o.Process),
+		Stages:  make([]ProcessStageHTTPResponse, 0, len(o.Stages)),
+		Deals:   make([]DealHTTPResponse, 0, len(o.Deals)),
+		Tasks:   make([]TaskHTTPResponse, 0, len(o.Tasks)),
+		Links:   make([]LinkHTTPResponse, 0, len(o.Links)),
+	}
+	for _, st := range o.Stages {
+		resp.Stages = append(resp.Stages, fromProcessStageItem(st))
+	}
+	for _, d := range o.Deals {
+		resp.Deals = append(resp.Deals, fromDealItem(d))
+	}
+	for _, t := range o.Tasks {
+		resp.Tasks = append(resp.Tasks, fromTaskItem(t))
+	}
+	for _, l := range o.Links {
+		resp.Links = append(resp.Links, fromLinkItem(l))
+	}
+	return resp
+}
+
 func FromClientOverview(o *service.ClientOverviewOutput) ClientOverviewHTTPResponse {
 	resp := ClientOverviewHTTPResponse{
 		Client: fromClientItem(o.Client),

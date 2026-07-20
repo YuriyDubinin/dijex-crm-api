@@ -100,6 +100,23 @@ type DealRepository interface {
 	SoftDelete(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
 }
 
+// ProcessRepository — процессы и их пользовательские этапы (process_stages).
+// Методы этапов живут здесь же (этап — дочерняя сущность процесса), по образцу
+// участников у CalendarEventRepository.
+type ProcessRepository interface {
+	Create(ctx context.Context, p *Process) error
+	List(ctx context.Context, customerID uuid.UUID, f ProcessListFilter) ([]*Process, int, error)
+	GetByID(ctx context.Context, customerID, id uuid.UUID) (*Process, error)
+	Update(ctx context.Context, customerID uuid.UUID, p *Process) error
+	SoftDelete(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
+	// Этапы процесса.
+	CreateStage(ctx context.Context, s *ProcessStage) error
+	ListStages(ctx context.Context, customerID, processID uuid.UUID) ([]*ProcessStage, error)
+	GetStageByID(ctx context.Context, customerID, id uuid.UUID) (*ProcessStage, error)
+	UpdateStage(ctx context.Context, customerID uuid.UUID, s *ProcessStage) error
+	SoftDeleteStage(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
+}
+
 // ─────────────────────────── Кросс-сущностные ───────────────────────────
 
 // EntityRepository — доступ к общему реестру entities (для проверок

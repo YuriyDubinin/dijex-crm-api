@@ -24,7 +24,7 @@ func NewTaskRepository(pool *pgxpool.Pool) *TaskRepository {
 }
 
 const taskColumns = `
-	id, customer_id, project_id, client_id, deal_id, title,
+	id, customer_id, project_id, client_id, deal_id, service_id, process_id, process_stage_id, title,
 	COALESCE(description, ''), status::text, priority::text,
 	assigned_to, created_by, due_at, completed_at,
 	attributes::text, created_at, updated_at, deleted_at
@@ -36,7 +36,7 @@ func scanTask(row pgx.Row) (*domain.Task, error) {
 		attr []byte
 	)
 	err := row.Scan(
-		&t.ID, &t.CustomerID, &t.ProjectID, &t.ClientID, &t.DealID, &t.Title,
+		&t.ID, &t.CustomerID, &t.ProjectID, &t.ClientID, &t.DealID, &t.ServiceID, &t.ProcessID, &t.ProcessStageID, &t.Title,
 		&t.Description, &t.Status, &t.Priority,
 		&t.AssignedTo, &t.CreatedBy, &t.DueAt, &t.CompletedAt,
 		&attr, &t.CreatedAt, &t.UpdatedAt, &t.DeletedAt,
@@ -51,12 +51,12 @@ func scanTask(row pgx.Row) (*domain.Task, error) {
 func (r *TaskRepository) Create(ctx context.Context, t *domain.Task) error {
 	const query = `
 		INSERT INTO tasks
-			(id, customer_id, project_id, client_id, deal_id, title, description, status, priority, assigned_to, created_by, due_at, completed_at, attributes, created_at, updated_at)
+			(id, customer_id, project_id, client_id, deal_id, service_id, process_id, process_stage_id, title, description, status, priority, assigned_to, created_by, due_at, completed_at, attributes, created_at, updated_at)
 		VALUES
-			($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8::task_status, $9::task_priority, $10, $11, $12, $13, $14::jsonb, $15, $16)
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''), $11::task_status, $12::task_priority, $13, $14, $15, $16, $17::jsonb, $18, $19)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		t.ID, t.CustomerID, t.ProjectID, t.ClientID, t.DealID, t.Title, t.Description, t.Status, t.Priority,
+		t.ID, t.CustomerID, t.ProjectID, t.ClientID, t.DealID, t.ServiceID, t.ProcessID, t.ProcessStageID, t.Title, t.Description, t.Status, t.Priority,
 		t.AssignedTo, t.CreatedBy, t.DueAt, t.CompletedAt, jsonbArg(t.Attributes), t.CreatedAt, t.UpdatedAt,
 	)
 	if err != nil {
@@ -100,6 +100,18 @@ func (r *TaskRepository) List(ctx context.Context, customerID uuid.UUID, f domai
 	if f.DealID != nil {
 		args = append(args, *f.DealID)
 		conds = append(conds, fmt.Sprintf("deal_id = $%d", len(args)))
+	}
+	if f.ServiceID != nil {
+		args = append(args, *f.ServiceID)
+		conds = append(conds, fmt.Sprintf("service_id = $%d", len(args)))
+	}
+	if f.ProcessID != nil {
+		args = append(args, *f.ProcessID)
+		conds = append(conds, fmt.Sprintf("process_id = $%d", len(args)))
+	}
+	if f.ProcessStageID != nil {
+		args = append(args, *f.ProcessStageID)
+		conds = append(conds, fmt.Sprintf("process_stage_id = $%d", len(args)))
 	}
 	if f.Status != "" {
 		args = append(args, f.Status)
@@ -179,22 +191,25 @@ func (r *TaskRepository) GetByID(ctx context.Context, customerID, id uuid.UUID) 
 func (r *TaskRepository) Update(ctx context.Context, customerID uuid.UUID, t *domain.Task) error {
 	const query = `
 		UPDATE tasks SET
-			project_id   = $1,
-			client_id    = $2,
-			deal_id      = $3,
-			title        = $4,
-			description  = NULLIF($5, ''),
-			status       = $6::task_status,
-			priority     = $7::task_priority,
-			assigned_to  = $8,
-			due_at       = $9,
-			completed_at = $10,
-			attributes   = $11::jsonb
-		WHERE id = $12 AND customer_id = $13 AND deleted_at IS NULL
+			project_id       = $1,
+			client_id        = $2,
+			deal_id          = $3,
+			service_id       = $4,
+			process_id       = $5,
+			process_stage_id = $6,
+			title            = $7,
+			description      = NULLIF($8, ''),
+			status           = $9::task_status,
+			priority         = $10::task_priority,
+			assigned_to      = $11,
+			due_at           = $12,
+			completed_at     = $13,
+			attributes       = $14::jsonb
+		WHERE id = $15 AND customer_id = $16 AND deleted_at IS NULL
 		RETURNING created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query,
-		t.ProjectID, t.ClientID, t.DealID, t.Title, t.Description, t.Status, t.Priority,
+		t.ProjectID, t.ClientID, t.DealID, t.ServiceID, t.ProcessID, t.ProcessStageID, t.Title, t.Description, t.Status, t.Priority,
 		t.AssignedTo, t.DueAt, t.CompletedAt, jsonbArg(t.Attributes), t.ID, customerID,
 	).Scan(&t.CreatedAt, &t.UpdatedAt)
 	if err != nil {

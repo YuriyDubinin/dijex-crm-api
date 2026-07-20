@@ -99,19 +99,22 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	in := service.ListTasksInput{
-		Page:       atoiDefault(q.Get("page"), 0),
-		PageSize:   atoiDefault(q.Get("page_size"), 0),
-		ProjectID:  parseUUIDPtr(q.Get("project_id")),
-		ClientID:   parseUUIDPtr(q.Get("client_id")),
-		DealID:     parseUUIDPtr(q.Get("deal_id")),
-		Status:     q.Get("status"),
-		Priority:   q.Get("priority"),
-		AssignedTo: parseUUIDPtr(q.Get("assigned_to")),
-		Search:     q.Get("search"),
-		DueBefore:  parseTimePtr(q.Get("due_before")),
-		DueAfter:   parseTimePtr(q.Get("due_after")),
-		SortBy:     q.Get("sort_by"),
-		Order:      q.Get("order"),
+		Page:           atoiDefault(q.Get("page"), 0),
+		PageSize:       atoiDefault(q.Get("page_size"), 0),
+		ProjectID:      parseUUIDPtr(q.Get("project_id")),
+		ClientID:       parseUUIDPtr(q.Get("client_id")),
+		DealID:         parseUUIDPtr(q.Get("deal_id")),
+		ServiceID:      parseUUIDPtr(q.Get("service_id")),
+		ProcessID:      parseUUIDPtr(q.Get("process_id")),
+		ProcessStageID: parseUUIDPtr(q.Get("process_stage_id")),
+		Status:         q.Get("status"),
+		Priority:       q.Get("priority"),
+		AssignedTo:     parseUUIDPtr(q.Get("assigned_to")),
+		Search:         q.Get("search"),
+		DueBefore:      parseTimePtr(q.Get("due_before")),
+		DueAfter:       parseTimePtr(q.Get("due_after")),
+		SortBy:         q.Get("sort_by"),
+		Order:          q.Get("order"),
 	}
 	out, err := h.service.ListTasks(r.Context(), principal.CustomerID, in)
 	if err != nil {

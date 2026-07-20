@@ -37,18 +37,29 @@ type ClientOverviewOutput struct {
 	Links   []LinkItem
 }
 
+// ProcessOverviewOutput — процесс со всем связанным: этапы, сделки (по
+// process_id), задачи (по process_id) и универсальные связи.
+type ProcessOverviewOutput struct {
+	Process ProcessItem
+	Stages  []ProcessStageItem
+	Deals   []DealItem
+	Tasks   []TaskItem
+	Links   []LinkItem
+}
+
 // ───────────────────────── Service ─────────────────────────
 
 // OverviewService — агрегатор поверх существующих репозиториев. Ничего не
 // пишет, только собирает связанные данные в разрезе тенанта.
 type OverviewService struct {
-	deals    domain.DealRepository
-	clients  domain.ClientRepository
-	projects domain.ProjectRepository
-	tasks    domain.TaskRepository
-	services domain.ServiceRepository
-	links    domain.EntityLinkRepository
-	logger   *slog.Logger
+	deals     domain.DealRepository
+	clients   domain.ClientRepository
+	projects  domain.ProjectRepository
+	tasks     domain.TaskRepository
+	services  domain.ServiceRepository
+	processes domain.ProcessRepository
+	links     domain.EntityLinkRepository
+	logger    *slog.Logger
 }
 
 func NewOverviewService(
@@ -57,10 +68,11 @@ func NewOverviewService(
 	projects domain.ProjectRepository,
 	tasks domain.TaskRepository,
 	services domain.ServiceRepository,
+	processes domain.ProcessRepository,
 	links domain.EntityLinkRepository,
 	logger *slog.Logger,
 ) *OverviewService {
-	return &OverviewService{deals: deals, clients: clients, projects: projects, tasks: tasks, services: services, links: links, logger: logger}
+	return &OverviewService{deals: deals, clients: clients, projects: projects, tasks: tasks, services: services, processes: processes, links: links, logger: logger}
 }
 
 // DealOverview собирает полную картину по сделке. ErrNotFound, если сделки нет
@@ -115,6 +127,47 @@ func (s *OverviewService) ClientOverview(ctx context.Context, customerID, client
 	out.Tasks = tasksToItems(tasks)
 
 	out.Links, err = s.linksOf(ctx, customerID, clientID)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ProcessOverview собирает полную картину по процессу: этапы, сделки и задачи
+// (по process_id) и универсальные связи. ErrNotFound, если процесса нет.
+func (s *OverviewService) ProcessOverview(ctx context.Context, customerID, processID uuid.UUID) (*ProcessOverviewOutput, error) {
+	process, err := s.processes.GetByID(ctx, customerID, processID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &ProcessOverviewOutput{Process: *processToItem(process)}
+
+	stages, err := s.processes.ListStages(ctx, customerID, processID)
+	if err != nil {
+		return nil, err
+	}
+	out.Stages = make([]ProcessStageItem, 0, len(stages))
+	for _, st := range stages {
+		out.Stages = append(out.Stages, *stageToItem(st))
+	}
+
+	deals, _, err := s.deals.List(ctx, customerID, domain.DealListFilter{ProcessID: &processID, Limit: overviewChildLimit})
+	if err != nil {
+		return nil, err
+	}
+	out.Deals = make([]DealItem, 0, len(deals))
+	for _, d := range deals {
+		out.Deals = append(out.Deals, *dealToItem(d))
+	}
+
+	tasks, _, err := s.tasks.List(ctx, customerID, domain.TaskListFilter{ProcessID: &processID, Limit: overviewChildLimit})
+	if err != nil {
+		return nil, err
+	}
+	out.Tasks = tasksToItems(tasks)
+
+	out.Links, err = s.linksOf(ctx, customerID, processID)
 	if err != nil {
 		return nil, err
 	}

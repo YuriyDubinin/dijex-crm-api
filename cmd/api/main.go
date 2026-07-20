@@ -54,6 +54,7 @@ func main() {
 	taskRepo := postgres.NewTaskRepository(pool)
 	calendarRepo := postgres.NewCalendarEventRepository(pool)
 	dealRepo := postgres.NewDealRepository(pool)
+	processRepo := postgres.NewProcessRepository(pool)
 	entityLinkRepo := postgres.NewEntityLinkRepository(pool)
 	tagRepo := postgres.NewTagRepository(pool)
 	customFieldRepo := postgres.NewCustomFieldRepository(pool)
@@ -76,10 +77,11 @@ func main() {
 	projectService := service.NewProjectService(projectRepo, log)
 	serviceService := service.NewServiceService(serviceRepo, projectRepo, log)
 	clientService := service.NewClientService(clientRepo, projectRepo, log)
-	taskService := service.NewTaskService(taskRepo, projectRepo, clientRepo, dealRepo, userRepo, log)
+	taskService := service.NewTaskService(taskRepo, projectRepo, clientRepo, dealRepo, serviceRepo, processRepo, processRepo, userRepo, log)
 	calendarService := service.NewCalendarEventService(calendarRepo, projectRepo, entityRepo, log)
-	dealService := service.NewDealService(dealRepo, projectRepo, clientRepo, serviceRepo, userRepo, log)
-	overviewService := service.NewOverviewService(dealRepo, clientRepo, projectRepo, taskRepo, serviceRepo, entityLinkRepo, log)
+	dealService := service.NewDealService(dealRepo, projectRepo, clientRepo, serviceRepo, processRepo, userRepo, log)
+	processService := service.NewProcessService(processRepo, log)
+	overviewService := service.NewOverviewService(dealRepo, clientRepo, projectRepo, taskRepo, serviceRepo, processRepo, entityLinkRepo, log)
 	entityLinkService := service.NewEntityLinkService(entityLinkRepo, entityRepo, log)
 	tagService := service.NewTagService(tagRepo, entityRepo, log)
 	customFieldService := service.NewCustomFieldService(customFieldRepo, entityRepo, log)
@@ -98,6 +100,7 @@ func main() {
 	taskHandler := handler.NewTaskHandler(taskService, v, log)
 	calendarHandler := handler.NewCalendarEventHandler(calendarService, v, log)
 	dealHandler := handler.NewDealHandler(dealService, v, log)
+	processHandler := handler.NewProcessHandler(processService, v, log)
 	overviewHandler := handler.NewOverviewHandler(overviewService, log)
 	entityLinkHandler := handler.NewEntityLinkHandler(entityLinkService, v, log)
 	tagHandler := handler.NewTagHandler(tagService, v, log)
@@ -117,6 +120,7 @@ func main() {
 		TaskHandler:          taskHandler,
 		CalendarEventHandler: calendarHandler,
 		DealHandler:          dealHandler,
+		ProcessHandler:       processHandler,
 		OverviewHandler:      overviewHandler,
 		EntityLinkHandler:    entityLinkHandler,
 		TagHandler:           tagHandler,

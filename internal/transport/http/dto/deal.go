@@ -13,6 +13,7 @@ type CreateDealHTTPRequest struct {
 	ProjectID       *uuid.UUID      `json:"project_id"        validate:"omitempty"`
 	ClientID        *uuid.UUID      `json:"client_id"         validate:"omitempty"`
 	ServiceID       *uuid.UUID      `json:"service_id"        validate:"omitempty"`
+	ProcessID       *uuid.UUID      `json:"process_id"        validate:"omitempty"`
 	Title           string          `json:"title"             validate:"required,min=2,max=255"`
 	Description     string          `json:"description"       validate:"omitempty,max=10000"`
 	Status          string          `json:"status"            validate:"omitempty,oneof=NEW PENDING WON LOST"`
@@ -30,6 +31,7 @@ func (r CreateDealHTTPRequest) ToServiceInput() service.CreateDealInput {
 		ProjectID:       r.ProjectID,
 		ClientID:        r.ClientID,
 		ServiceID:       r.ServiceID,
+		ProcessID:       r.ProcessID,
 		Title:           r.Title,
 		Description:     r.Description,
 		Status:          r.Status,
@@ -48,6 +50,7 @@ type UpdateDealHTTPRequest struct {
 	ProjectID       *uuid.UUID      `json:"project_id"        validate:"omitempty"`
 	ClientID        *uuid.UUID      `json:"client_id"         validate:"omitempty"`
 	ServiceID       *uuid.UUID      `json:"service_id"        validate:"omitempty"`
+	ProcessID       *uuid.UUID      `json:"process_id"        validate:"omitempty"`
 	Title           string          `json:"title"             validate:"required,min=2,max=255"`
 	Description     string          `json:"description"       validate:"omitempty,max=10000"`
 	Status          string          `json:"status"            validate:"omitempty,oneof=NEW PENDING WON LOST"`
@@ -66,6 +69,7 @@ func (r UpdateDealHTTPRequest) ToServiceInput() service.UpdateDealInput {
 		ProjectID:       r.ProjectID,
 		ClientID:        r.ClientID,
 		ServiceID:       r.ServiceID,
+		ProcessID:       r.ProcessID,
 		Title:           r.Title,
 		Description:     r.Description,
 		Status:          r.Status,
@@ -84,6 +88,7 @@ type DealHTTPResponse struct {
 	ProjectID       *uuid.UUID      `json:"project_id"`
 	ClientID        *uuid.UUID      `json:"client_id"`
 	ServiceID       *uuid.UUID      `json:"service_id"`
+	ProcessID       *uuid.UUID      `json:"process_id"`
 	Title           string          `json:"title"`
 	Description     string          `json:"description"`
 	Status          string          `json:"status"`
@@ -110,6 +115,7 @@ func fromDealItem(d service.DealItem) DealHTTPResponse {
 		ProjectID:       d.ProjectID,
 		ClientID:        d.ClientID,
 		ServiceID:       d.ServiceID,
+		ProcessID:       d.ProcessID,
 		Title:           d.Title,
 		Description:     d.Description,
 		Status:          d.Status,

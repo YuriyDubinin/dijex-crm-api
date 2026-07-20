@@ -58,6 +58,12 @@ func (c stubServiceChecker) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.
 	return &domain.Service{}, c.err
 }
 
+type stubProcessChecker struct{ err error }
+
+func (c stubProcessChecker) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.Process, error) {
+	return &domain.Process{}, c.err
+}
+
 type stubUserChecker struct{ err error }
 
 func (c stubUserChecker) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.CustomerUser, error) {
@@ -65,7 +71,7 @@ func (c stubUserChecker) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.Cus
 }
 
 func newDealSvc(repo *fakeDealRepo, projErr, cliErr, usrErr error) *DealService {
-	return NewDealService(repo, stubProjectChecker{projErr}, stubClientChecker{cliErr}, stubServiceChecker{}, stubUserChecker{usrErr}, testLogger())
+	return NewDealService(repo, stubProjectChecker{projErr}, stubClientChecker{cliErr}, stubServiceChecker{}, stubProcessChecker{}, stubUserChecker{usrErr}, testLogger())
 }
 
 func TestCreateDeal(t *testing.T) {
@@ -167,7 +173,7 @@ func TestCreateDeal(t *testing.T) {
 		t.Parallel()
 		repo := &fakeDealRepo{}
 		// service checker returns NotFound
-		svc := NewDealService(repo, stubProjectChecker{}, stubClientChecker{}, stubServiceChecker{domain.ErrNotFound}, stubUserChecker{}, testLogger())
+		svc := NewDealService(repo, stubProjectChecker{}, stubClientChecker{}, stubServiceChecker{domain.ErrNotFound}, stubProcessChecker{}, stubUserChecker{}, testLogger())
 		svc.clock = fixedClock(now)
 		sid := uuid.New()
 		_, err := svc.CreateDeal(context.Background(), cust, CreateDealInput{Title: "Deal", ServiceID: &sid, CreatedBy: actor})

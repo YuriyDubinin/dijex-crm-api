@@ -18,6 +18,7 @@ import (
 type OverviewService interface {
 	DealOverview(ctx context.Context, customerID, dealID uuid.UUID) (*service.DealOverviewOutput, error)
 	ClientOverview(ctx context.Context, customerID, clientID uuid.UUID) (*service.ClientOverviewOutput, error)
+	ProcessOverview(ctx context.Context, customerID, processID uuid.UUID) (*service.ProcessOverviewOutput, error)
 }
 
 type OverviewHandler struct {
@@ -77,4 +78,29 @@ func (h *OverviewHandler) ClientOverview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, dto.FromClientOverview(out))
+}
+
+// ProcessOverview обрабатывает GET /api/processes/overview?id=<uuid>.
+func (h *OverviewHandler) ProcessOverview(w http.ResponseWriter, r *http.Request) {
+	principal, ok := principalOr500(w, r, h.logger)
+	if !ok {
+		return
+	}
+	id := parseUUIDPtr(r.URL.Query().Get("id"))
+	if id == nil {
+		response.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "id is required")
+		return
+	}
+
+	out, err := h.service.ProcessOverview(r.Context(), principal.CustomerID, *id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.WriteError(w, http.StatusNotFound, "PROCESS_NOT_FOUND", "process not found")
+			return
+		}
+		h.logger.Error("process overview", "err", err, "request_id", mw.RequestIDFromContext(r.Context()))
+		response.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, dto.FromProcessOverview(out))
 }

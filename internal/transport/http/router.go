@@ -27,6 +27,7 @@ type Deps struct {
 	TaskHandler          *handler.TaskHandler
 	CalendarEventHandler *handler.CalendarEventHandler
 	DealHandler          *handler.DealHandler
+	ProcessHandler       *handler.ProcessHandler
 	OverviewHandler      *handler.OverviewHandler
 	EntityLinkHandler    *handler.EntityLinkHandler
 	TagHandler           *handler.TagHandler
@@ -105,6 +106,17 @@ func NewRouter(deps Deps) http.Handler {
 			r.Put("/deals/update", deps.DealHandler.Update)
 			r.Delete("/deals/delete", deps.DealHandler.Delete)
 			r.Get("/deals/overview", deps.OverviewHandler.DealOverview)
+
+			// Processes (процессы) и их пользовательские этапы
+			r.Post("/processes/create", deps.ProcessHandler.Create)
+			r.Get("/processes/list", deps.ProcessHandler.List)
+			r.Put("/processes/update", deps.ProcessHandler.Update)
+			r.Delete("/processes/delete", deps.ProcessHandler.Delete)
+			r.Get("/processes/overview", deps.OverviewHandler.ProcessOverview)
+			r.Post("/processes/stages/create", deps.ProcessHandler.CreateStage)
+			r.Get("/processes/stages/list", deps.ProcessHandler.ListStages)
+			r.Put("/processes/stages/update", deps.ProcessHandler.UpdateStage)
+			r.Delete("/processes/stages/delete", deps.ProcessHandler.DeleteStage)
 
 			// Entity links (универсальные связи "всё со всем")
 			r.Post("/links/create", deps.EntityLinkHandler.Create)

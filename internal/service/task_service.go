@@ -16,65 +16,77 @@ import (
 // ───────────────────────── Task DTO ─────────────────────────
 
 type CreateTaskInput struct {
-	ProjectID   *uuid.UUID
-	ClientID    *uuid.UUID
-	DealID      *uuid.UUID
-	Title       string
-	Description string
-	Status      string
-	Priority    string
-	AssignedTo  *uuid.UUID
-	CreatedBy   uuid.UUID
-	DueAt       *time.Time
-	Attributes  json.RawMessage
+	ProjectID      *uuid.UUID
+	ClientID       *uuid.UUID
+	DealID         *uuid.UUID
+	ServiceID      *uuid.UUID
+	ProcessID      *uuid.UUID
+	ProcessStageID *uuid.UUID
+	Title          string
+	Description    string
+	Status         string
+	Priority       string
+	AssignedTo     *uuid.UUID
+	CreatedBy      uuid.UUID
+	DueAt          *time.Time
+	Attributes     json.RawMessage
 }
 
 type UpdateTaskInput struct {
-	ID          uuid.UUID
-	ProjectID   *uuid.UUID
-	ClientID    *uuid.UUID
-	DealID      *uuid.UUID
-	Title       string
-	Description string
-	Status      string
-	Priority    string
-	AssignedTo  *uuid.UUID
-	DueAt       *time.Time
-	Attributes  json.RawMessage
+	ID             uuid.UUID
+	ProjectID      *uuid.UUID
+	ClientID       *uuid.UUID
+	DealID         *uuid.UUID
+	ServiceID      *uuid.UUID
+	ProcessID      *uuid.UUID
+	ProcessStageID *uuid.UUID
+	Title          string
+	Description    string
+	Status         string
+	Priority       string
+	AssignedTo     *uuid.UUID
+	DueAt          *time.Time
+	Attributes     json.RawMessage
 }
 
 type ListTasksInput struct {
-	Page       int
-	PageSize   int
-	ProjectID  *uuid.UUID
-	ClientID   *uuid.UUID
-	DealID     *uuid.UUID
-	Status     string
-	Priority   string
-	AssignedTo *uuid.UUID
-	Search     string
-	DueBefore  *time.Time
-	DueAfter   *time.Time
-	SortBy     string
-	Order      string
+	Page           int
+	PageSize       int
+	ProjectID      *uuid.UUID
+	ClientID       *uuid.UUID
+	DealID         *uuid.UUID
+	ServiceID      *uuid.UUID
+	ProcessID      *uuid.UUID
+	ProcessStageID *uuid.UUID
+	Status         string
+	Priority       string
+	AssignedTo     *uuid.UUID
+	Search         string
+	DueBefore      *time.Time
+	DueAfter       *time.Time
+	SortBy         string
+	Order          string
 }
 
 type TaskItem struct {
-	ID          uuid.UUID
-	ProjectID   *uuid.UUID
-	ClientID    *uuid.UUID
-	DealID      *uuid.UUID
-	Title       string
-	Description string
-	Status      string
-	Priority    string
-	AssignedTo  *uuid.UUID
-	CreatedBy   *uuid.UUID
-	DueAt       *time.Time
-	CompletedAt *time.Time
-	Attributes  json.RawMessage
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             uuid.UUID
+	ProjectID      *uuid.UUID
+	ClientID       *uuid.UUID
+	DealID         *uuid.UUID
+	ServiceID      *uuid.UUID
+	ProcessID      *uuid.UUID
+	ProcessStageID *uuid.UUID
+	Title          string
+	Description    string
+	Status         string
+	Priority       string
+	AssignedTo     *uuid.UUID
+	CreatedBy      *uuid.UUID
+	DueAt          *time.Time
+	CompletedAt    *time.Time
+	Attributes     json.RawMessage
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type ListTasksOutput struct {
@@ -90,21 +102,37 @@ type DeleteTaskOutput struct {
 // ───────────────────────── Task ─────────────────────────
 
 type TaskService struct {
-	repo     domain.TaskRepository
-	projects ProjectChecker
-	clients  ClientChecker
-	deals    DealChecker
-	users    UserChecker
-	logger   *slog.Logger
-	clock    func() time.Time
+	repo      domain.TaskRepository
+	projects  ProjectChecker
+	clients   ClientChecker
+	deals     DealChecker
+	services  ServiceChecker
+	processes ProcessChecker
+	stages    ProcessStageChecker
+	users     UserChecker
+	logger    *slog.Logger
+	clock     func() time.Time
 }
 
-func NewTaskService(repo domain.TaskRepository, projects ProjectChecker, clients ClientChecker, deals DealChecker, users UserChecker, logger *slog.Logger) *TaskService {
-	return &TaskService{repo: repo, projects: projects, clients: clients, deals: deals, users: users, logger: logger, clock: time.Now}
+func NewTaskService(repo domain.TaskRepository, projects ProjectChecker, clients ClientChecker, deals DealChecker, services ServiceChecker, processes ProcessChecker, stages ProcessStageChecker, users UserChecker, logger *slog.Logger) *TaskService {
+	return &TaskService{
+		repo:      repo,
+		projects:  projects,
+		clients:   clients,
+		deals:     deals,
+		services:  services,
+		processes: processes,
+		stages:    stages,
+		users:     users,
+		logger:    logger,
+		clock:     time.Now,
+	}
 }
 
 // taskLinkErrors — общие проверки принадлежности связанных сущностей тенанту.
-func (s *TaskService) taskLinkErrors(ctx context.Context, customerID uuid.UUID, projectID, clientID, dealID, assignedTo *uuid.UUID) domain.ValidationErrors {
+// process_stage_id дополнительно проверяется на принадлежность указанному
+// process_id (этап нельзя задать без процесса или из чужого процесса).
+func (s *TaskService) taskLinkErrors(ctx context.Context, customerID uuid.UUID, projectID, clientID, dealID, serviceID, processID, processStageID, assignedTo *uuid.UUID) domain.ValidationErrors {
 	var errs domain.ValidationErrors
 	if ve := ensureProjectOwned(ctx, s.projects, customerID, projectID); ve != nil {
 		errs = append(errs, ve)
@@ -113,6 +141,15 @@ func (s *TaskService) taskLinkErrors(ctx context.Context, customerID uuid.UUID, 
 		errs = append(errs, ve)
 	}
 	if ve := ensureDealOwned(ctx, s.deals, customerID, dealID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if ve := ensureServiceOwned(ctx, s.services, customerID, serviceID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if ve := ensureProcessOwned(ctx, s.processes, customerID, processID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if ve := ensureProcessStageOwned(ctx, s.stages, customerID, processStageID, processID); ve != nil {
 		errs = append(errs, ve)
 	}
 	if ve := ensureUserOwned(ctx, s.users, customerID, assignedTo, "assigned_to"); ve != nil {
@@ -128,7 +165,7 @@ func (s *TaskService) CreateTask(ctx context.Context, customerID uuid.UUID, in C
 	in.Priority = normalizeStatus(in.Priority, domain.TaskPriorityMedium)
 
 	errs := validateTask(in.Title, in.Status, in.Priority, in.Attributes)
-	errs = append(errs, s.taskLinkErrors(ctx, customerID, in.ProjectID, in.ClientID, in.DealID, in.AssignedTo)...)
+	errs = append(errs, s.taskLinkErrors(ctx, customerID, in.ProjectID, in.ClientID, in.DealID, in.ServiceID, in.ProcessID, in.ProcessStageID, in.AssignedTo)...)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -140,22 +177,25 @@ func (s *TaskService) CreateTask(ctx context.Context, customerID uuid.UUID, in C
 	}
 	createdBy := in.CreatedBy
 	task := &domain.Task{
-		ID:          uuid.New(),
-		CustomerID:  customerID,
-		ProjectID:   in.ProjectID,
-		ClientID:    in.ClientID,
-		DealID:      in.DealID,
-		Title:       in.Title,
-		Description: in.Description,
-		Status:      in.Status,
-		Priority:    in.Priority,
-		AssignedTo:  in.AssignedTo,
-		CreatedBy:   &createdBy,
-		DueAt:       in.DueAt,
-		CompletedAt: completedAt,
-		Attributes:  in.Attributes,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:             uuid.New(),
+		CustomerID:     customerID,
+		ProjectID:      in.ProjectID,
+		ClientID:       in.ClientID,
+		DealID:         in.DealID,
+		ServiceID:      in.ServiceID,
+		ProcessID:      in.ProcessID,
+		ProcessStageID: in.ProcessStageID,
+		Title:          in.Title,
+		Description:    in.Description,
+		Status:         in.Status,
+		Priority:       in.Priority,
+		AssignedTo:     in.AssignedTo,
+		CreatedBy:      &createdBy,
+		DueAt:          in.DueAt,
+		CompletedAt:    completedAt,
+		Attributes:     in.Attributes,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	if err := s.repo.Create(ctx, task); err != nil {
 		return nil, err
@@ -171,7 +211,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, customerID uuid.UUID, in U
 	in.Priority = normalizeStatus(in.Priority, domain.TaskPriorityMedium)
 
 	errs := validateTask(in.Title, in.Status, in.Priority, in.Attributes)
-	errs = append(errs, s.taskLinkErrors(ctx, customerID, in.ProjectID, in.ClientID, in.DealID, in.AssignedTo)...)
+	errs = append(errs, s.taskLinkErrors(ctx, customerID, in.ProjectID, in.ClientID, in.DealID, in.ServiceID, in.ProcessID, in.ProcessStageID, in.AssignedTo)...)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -182,19 +222,22 @@ func (s *TaskService) UpdateTask(ctx context.Context, customerID uuid.UUID, in U
 		completedAt = &now
 	}
 	task := &domain.Task{
-		ID:          in.ID,
-		CustomerID:  customerID,
-		ProjectID:   in.ProjectID,
-		ClientID:    in.ClientID,
-		DealID:      in.DealID,
-		Title:       in.Title,
-		Description: in.Description,
-		Status:      in.Status,
-		Priority:    in.Priority,
-		AssignedTo:  in.AssignedTo,
-		DueAt:       in.DueAt,
-		CompletedAt: completedAt,
-		Attributes:  in.Attributes,
+		ID:             in.ID,
+		CustomerID:     customerID,
+		ProjectID:      in.ProjectID,
+		ClientID:       in.ClientID,
+		DealID:         in.DealID,
+		ServiceID:      in.ServiceID,
+		ProcessID:      in.ProcessID,
+		ProcessStageID: in.ProcessStageID,
+		Title:          in.Title,
+		Description:    in.Description,
+		Status:         in.Status,
+		Priority:       in.Priority,
+		AssignedTo:     in.AssignedTo,
+		DueAt:          in.DueAt,
+		CompletedAt:    completedAt,
+		Attributes:     in.Attributes,
 	}
 	if err := s.repo.Update(ctx, customerID, task); err != nil {
 		return nil, err
@@ -215,19 +258,22 @@ func (s *TaskService) ListTasks(ctx context.Context, customerID uuid.UUID, in Li
 
 	page, size, offset := clampPagination(in.Page, in.PageSize)
 	filter := domain.TaskListFilter{
-		ProjectID:  in.ProjectID,
-		ClientID:   in.ClientID,
-		DealID:     in.DealID,
-		Status:     status,
-		Priority:   priority,
-		AssignedTo: in.AssignedTo,
-		Search:     strings.TrimSpace(in.Search),
-		DueBefore:  in.DueBefore,
-		DueAfter:   in.DueAfter,
-		Limit:      size,
-		Offset:     offset,
-		SortBy:     in.SortBy,
-		SortDesc:   strings.ToLower(in.Order) != "asc",
+		ProjectID:      in.ProjectID,
+		ClientID:       in.ClientID,
+		DealID:         in.DealID,
+		ServiceID:      in.ServiceID,
+		ProcessID:      in.ProcessID,
+		ProcessStageID: in.ProcessStageID,
+		Status:         status,
+		Priority:       priority,
+		AssignedTo:     in.AssignedTo,
+		Search:         strings.TrimSpace(in.Search),
+		DueBefore:      in.DueBefore,
+		DueAfter:       in.DueAfter,
+		Limit:          size,
+		Offset:         offset,
+		SortBy:         in.SortBy,
+		SortDesc:       strings.ToLower(in.Order) != "asc",
 	}
 
 	items, total, err := s.repo.List(ctx, customerID, filter)
@@ -276,20 +322,23 @@ func validateTask(title, status, priority string, attrs json.RawMessage) domain.
 
 func taskToItem(t *domain.Task) *TaskItem {
 	return &TaskItem{
-		ID:          t.ID,
-		ProjectID:   t.ProjectID,
-		ClientID:    t.ClientID,
-		DealID:      t.DealID,
-		Title:       t.Title,
-		Description: t.Description,
-		Status:      t.Status,
-		Priority:    t.Priority,
-		AssignedTo:  t.AssignedTo,
-		CreatedBy:   t.CreatedBy,
-		DueAt:       t.DueAt,
-		CompletedAt: t.CompletedAt,
-		Attributes:  t.Attributes,
-		CreatedAt:   t.CreatedAt,
-		UpdatedAt:   t.UpdatedAt,
+		ID:             t.ID,
+		ProjectID:      t.ProjectID,
+		ClientID:       t.ClientID,
+		DealID:         t.DealID,
+		ServiceID:      t.ServiceID,
+		ProcessID:      t.ProcessID,
+		ProcessStageID: t.ProcessStageID,
+		Title:          t.Title,
+		Description:    t.Description,
+		Status:         t.Status,
+		Priority:       t.Priority,
+		AssignedTo:     t.AssignedTo,
+		CreatedBy:      t.CreatedBy,
+		DueAt:          t.DueAt,
+		CompletedAt:    t.CompletedAt,
+		Attributes:     t.Attributes,
+		CreatedAt:      t.CreatedAt,
+		UpdatedAt:      t.UpdatedAt,
 	}
 }
