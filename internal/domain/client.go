@@ -20,6 +20,7 @@ type Client struct {
 	Phone       string
 	Address     json.RawMessage
 	Status      string // ENUM client_status
+	SubjectType string // ENUM client_subject_type (INDIVIDUAL/LEGAL_ENTITY)
 	Source      string
 	Attributes  json.RawMessage
 	CreatedAt   time.Time
@@ -44,11 +45,27 @@ func IsValidClientStatus(s string) bool {
 	}
 }
 
+// Значения ENUM client_subject_type — вид субъекта (физлицо/юрлицо).
+const (
+	ClientSubjectTypeIndividual  = "INDIVIDUAL"
+	ClientSubjectTypeLegalEntity = "LEGAL_ENTITY"
+)
+
+func IsValidClientSubjectType(s string) bool {
+	switch s {
+	case ClientSubjectTypeIndividual, ClientSubjectTypeLegalEntity:
+		return true
+	default:
+		return false
+	}
+}
+
 // ClientListFilter — параметры выборки списка клиентов внутри тенанта.
 type ClientListFilter struct {
-	ProjectID *uuid.UUID
-	Status    string
-	Search    string // ILIKE по first_name/last_name/company_name/email/phone
+	ProjectID   *uuid.UUID
+	Status      string
+	SubjectType string
+	Search      string // ILIKE по first_name/last_name/company_name/email/phone
 
 	Limit    int
 	Offset   int

@@ -17,6 +17,7 @@ type CreateClientHTTPRequest struct {
 	Email       string          `json:"email"        validate:"omitempty,email,max=255"`
 	Phone       string          `json:"phone"        validate:"omitempty,max=50"`
 	Status      string          `json:"status"       validate:"omitempty,oneof=LEAD ACTIVE INACTIVE ARCHIVED"`
+	SubjectType string          `json:"subject_type" validate:"omitempty,oneof=INDIVIDUAL LEGAL_ENTITY"`
 	Source      string          `json:"source"       validate:"omitempty,max=255"`
 	Address     json.RawMessage `json:"address"      validate:"omitempty"`
 	Attributes  json.RawMessage `json:"attributes"   validate:"omitempty"`
@@ -31,6 +32,7 @@ func (r CreateClientHTTPRequest) ToServiceInput() service.CreateClientInput {
 		Email:       r.Email,
 		Phone:       r.Phone,
 		Status:      r.Status,
+		SubjectType: r.SubjectType,
 		Source:      r.Source,
 		Address:     r.Address,
 		Attributes:  r.Attributes,
@@ -46,6 +48,7 @@ type UpdateClientHTTPRequest struct {
 	Email       string          `json:"email"        validate:"omitempty,email,max=255"`
 	Phone       string          `json:"phone"        validate:"omitempty,max=50"`
 	Status      string          `json:"status"       validate:"omitempty,oneof=LEAD ACTIVE INACTIVE ARCHIVED"`
+	SubjectType string          `json:"subject_type" validate:"omitempty,oneof=INDIVIDUAL LEGAL_ENTITY"`
 	Source      string          `json:"source"       validate:"omitempty,max=255"`
 	Address     json.RawMessage `json:"address"      validate:"omitempty"`
 	Attributes  json.RawMessage `json:"attributes"   validate:"omitempty"`
@@ -61,6 +64,7 @@ func (r UpdateClientHTTPRequest) ToServiceInput() service.UpdateClientInput {
 		Email:       r.Email,
 		Phone:       r.Phone,
 		Status:      r.Status,
+		SubjectType: r.SubjectType,
 		Source:      r.Source,
 		Address:     r.Address,
 		Attributes:  r.Attributes,
@@ -76,6 +80,7 @@ type ClientHTTPResponse struct {
 	Email       string          `json:"email"`
 	Phone       string          `json:"phone"`
 	Status      string          `json:"status"`
+	SubjectType string          `json:"subject_type"`
 	Source      string          `json:"source"`
 	Address     json.RawMessage `json:"address"`
 	Attributes  json.RawMessage `json:"attributes"`
@@ -97,6 +102,7 @@ func fromClientItem(c service.ClientItem) ClientHTTPResponse {
 		Email:       c.Email,
 		Phone:       c.Phone,
 		Status:      c.Status,
+		SubjectType: c.SubjectType,
 		Source:      c.Source,
 		Address:     c.Address,
 		Attributes:  attrs,

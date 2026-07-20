@@ -97,13 +97,14 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	in := service.ListClientsInput{
-		Page:      atoiDefault(q.Get("page"), 0),
-		PageSize:  atoiDefault(q.Get("page_size"), 0),
-		ProjectID: parseUUIDPtr(q.Get("project_id")),
-		Status:    q.Get("status"),
-		Search:    q.Get("search"),
-		SortBy:    q.Get("sort_by"),
-		Order:     q.Get("order"),
+		Page:        atoiDefault(q.Get("page"), 0),
+		PageSize:    atoiDefault(q.Get("page_size"), 0),
+		ProjectID:   parseUUIDPtr(q.Get("project_id")),
+		Status:      q.Get("status"),
+		SubjectType: q.Get("subject_type"),
+		Search:      q.Get("search"),
+		SortBy:      q.Get("sort_by"),
+		Order:       q.Get("order"),
 	}
 	out, err := h.service.ListClients(r.Context(), principal.CustomerID, in)
 	if err != nil {

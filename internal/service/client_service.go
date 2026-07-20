@@ -23,6 +23,7 @@ type CreateClientInput struct {
 	Email       string
 	Phone       string
 	Status      string
+	SubjectType string
 	Source      string
 	Address     json.RawMessage
 	Attributes  json.RawMessage
@@ -37,19 +38,21 @@ type UpdateClientInput struct {
 	Email       string
 	Phone       string
 	Status      string
+	SubjectType string
 	Source      string
 	Address     json.RawMessage
 	Attributes  json.RawMessage
 }
 
 type ListClientsInput struct {
-	Page      int
-	PageSize  int
-	ProjectID *uuid.UUID
-	Status    string
-	Search    string
-	SortBy    string
-	Order     string
+	Page        int
+	PageSize    int
+	ProjectID   *uuid.UUID
+	Status      string
+	SubjectType string
+	Search      string
+	SortBy      string
+	Order       string
 }
 
 type ClientItem struct {
@@ -61,6 +64,7 @@ type ClientItem struct {
 	Email       string
 	Phone       string
 	Status      string
+	SubjectType string
 	Source      string
 	Address     json.RawMessage
 	Attributes  json.RawMessage
@@ -99,8 +103,9 @@ func (s *ClientService) CreateClient(ctx context.Context, customerID uuid.UUID, 
 	in.Phone = strings.TrimSpace(in.Phone)
 	in.Source = strings.TrimSpace(in.Source)
 	in.Status = normalizeStatus(in.Status, domain.ClientStatusLead)
+	in.SubjectType = normalizeStatus(in.SubjectType, domain.ClientSubjectTypeIndividual)
 
-	errs := validateClient(in.FirstName, in.LastName, in.CompanyName, in.Email, in.Status, in.Address, in.Attributes)
+	errs := validateClient(in.FirstName, in.LastName, in.CompanyName, in.Email, in.Status, in.SubjectType, in.Address, in.Attributes)
 	if ve := ensureProjectOwned(ctx, s.projects, customerID, in.ProjectID); ve != nil {
 		errs = append(errs, ve)
 	}
@@ -120,6 +125,7 @@ func (s *ClientService) CreateClient(ctx context.Context, customerID uuid.UUID, 
 		Phone:       in.Phone,
 		Address:     in.Address,
 		Status:      in.Status,
+		SubjectType: in.SubjectType,
 		Source:      in.Source,
 		Attributes:  in.Attributes,
 		CreatedAt:   now,
@@ -140,8 +146,9 @@ func (s *ClientService) UpdateClient(ctx context.Context, customerID uuid.UUID, 
 	in.Phone = strings.TrimSpace(in.Phone)
 	in.Source = strings.TrimSpace(in.Source)
 	in.Status = normalizeStatus(in.Status, domain.ClientStatusLead)
+	in.SubjectType = normalizeStatus(in.SubjectType, domain.ClientSubjectTypeIndividual)
 
-	errs := validateClient(in.FirstName, in.LastName, in.CompanyName, in.Email, in.Status, in.Address, in.Attributes)
+	errs := validateClient(in.FirstName, in.LastName, in.CompanyName, in.Email, in.Status, in.SubjectType, in.Address, in.Attributes)
 	if ve := ensureProjectOwned(ctx, s.projects, customerID, in.ProjectID); ve != nil {
 		errs = append(errs, ve)
 	}
@@ -160,6 +167,7 @@ func (s *ClientService) UpdateClient(ctx context.Context, customerID uuid.UUID, 
 		Phone:       in.Phone,
 		Address:     in.Address,
 		Status:      in.Status,
+		SubjectType: in.SubjectType,
 		Source:      in.Source,
 		Attributes:  in.Attributes,
 	}
@@ -175,16 +183,21 @@ func (s *ClientService) ListClients(ctx context.Context, customerID uuid.UUID, i
 	if status != "" && !domain.IsValidClientStatus(status) {
 		return nil, domain.ValidationErrors{{Field: "status", Message: "invalid client status"}}
 	}
+	subjectType := normalizeStatus(in.SubjectType, "")
+	if subjectType != "" && !domain.IsValidClientSubjectType(subjectType) {
+		return nil, domain.ValidationErrors{{Field: "subject_type", Message: "invalid client subject type"}}
+	}
 
 	page, size, offset := clampPagination(in.Page, in.PageSize)
 	filter := domain.ClientListFilter{
-		ProjectID: in.ProjectID,
-		Status:    status,
-		Search:    strings.TrimSpace(in.Search),
-		Limit:     size,
-		Offset:    offset,
-		SortBy:    in.SortBy,
-		SortDesc:  strings.ToLower(in.Order) != "asc",
+		ProjectID:   in.ProjectID,
+		Status:      status,
+		SubjectType: subjectType,
+		Search:      strings.TrimSpace(in.Search),
+		Limit:       size,
+		Offset:      offset,
+		SortBy:      in.SortBy,
+		SortDesc:    strings.ToLower(in.Order) != "asc",
 	}
 
 	items, total, err := s.repo.List(ctx, customerID, filter)
@@ -212,7 +225,7 @@ func (s *ClientService) DeleteClient(ctx context.Context, customerID, id uuid.UU
 
 // ───────────────────────── helpers ─────────────────────────
 
-func validateClient(firstName, lastName, companyName, email, status string, address, attrs json.RawMessage) domain.ValidationErrors {
+func validateClient(firstName, lastName, companyName, email, status, subjectType string, address, attrs json.RawMessage) domain.ValidationErrors {
 	var errs domain.ValidationErrors
 	if firstName == "" && lastName == "" && companyName == "" {
 		errs = append(errs, &domain.ValidationError{Field: "name", Message: "at least one of first_name, last_name, company_name is required"})
@@ -224,6 +237,9 @@ func validateClient(firstName, lastName, companyName, email, status string, addr
 	}
 	if !domain.IsValidClientStatus(status) {
 		errs = append(errs, &domain.ValidationError{Field: "status", Message: "must be one of LEAD, ACTIVE, INACTIVE, ARCHIVED"})
+	}
+	if !domain.IsValidClientSubjectType(subjectType) {
+		errs = append(errs, &domain.ValidationError{Field: "subject_type", Message: "must be one of INDIVIDUAL, LEGAL_ENTITY"})
 	}
 	if !validAttributes(address) {
 		errs = append(errs, attrError("address"))
@@ -244,6 +260,7 @@ func clientToItem(c *domain.Client) *ClientItem {
 		Email:       c.Email,
 		Phone:       c.Phone,
 		Status:      c.Status,
+		SubjectType: c.SubjectType,
 		Source:      c.Source,
 		Address:     c.Address,
 		Attributes:  c.Attributes,

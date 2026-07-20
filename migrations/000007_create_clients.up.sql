@@ -1,6 +1,9 @@
 -- CLIENTS — клиенты тенанта (конечные потребители услуг).
 CREATE TYPE client_status AS ENUM ('LEAD', 'ACTIVE', 'INACTIVE', 'ARCHIVED');
 
+-- Вид субъекта: физическое или юридическое лицо.
+CREATE TYPE client_subject_type AS ENUM ('INDIVIDUAL', 'LEGAL_ENTITY');
+
 CREATE TABLE clients (
     id           UUID PRIMARY KEY,
     customer_id  UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -12,6 +15,7 @@ CREATE TABLE clients (
     phone        TEXT,
     address      JSONB,
     status       client_status NOT NULL DEFAULT 'LEAD',
+    subject_type client_subject_type NOT NULL DEFAULT 'INDIVIDUAL',
     source       TEXT,
     attributes   JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),

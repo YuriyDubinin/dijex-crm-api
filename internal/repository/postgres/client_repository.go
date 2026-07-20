@@ -27,7 +27,7 @@ const clientColumns = `
 	id, customer_id, project_id,
 	COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(company_name, ''),
 	COALESCE(email, ''), COALESCE(phone, ''), address::text,
-	status::text, COALESCE(source, ''), attributes::text, created_at, updated_at, deleted_at
+	status::text, subject_type::text, COALESCE(source, ''), attributes::text, created_at, updated_at, deleted_at
 `
 
 func scanClient(row pgx.Row) (*domain.Client, error) {
@@ -40,7 +40,7 @@ func scanClient(row pgx.Row) (*domain.Client, error) {
 		&c.ID, &c.CustomerID, &c.ProjectID,
 		&c.FirstName, &c.LastName, &c.CompanyName,
 		&c.Email, &c.Phone, &addr,
-		&c.Status, &c.Source, &attr, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
+		&c.Status, &c.SubjectType, &c.Source, &attr, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -57,13 +57,13 @@ func scanClient(row pgx.Row) (*domain.Client, error) {
 func (r *ClientRepository) Create(ctx context.Context, c *domain.Client) error {
 	const query = `
 		INSERT INTO clients
-			(id, customer_id, project_id, first_name, last_name, company_name, email, phone, address, status, source, attributes, created_at, updated_at)
+			(id, customer_id, project_id, first_name, last_name, company_name, email, phone, address, status, subject_type, source, attributes, created_at, updated_at)
 		VALUES
-			($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), $9::jsonb, $10::client_status, NULLIF($11, ''), $12::jsonb, $13, $14)
+			($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), $9::jsonb, $10::client_status, $11::client_subject_type, NULLIF($12, ''), $13::jsonb, $14, $15)
 	`
 	_, err := r.pool.Exec(ctx, query,
 		c.ID, c.CustomerID, c.ProjectID, c.FirstName, c.LastName, c.CompanyName, c.Email, c.Phone,
-		jsonbArgOrNil(c.Address), c.Status, c.Source, jsonbArg(c.Attributes), c.CreatedAt, c.UpdatedAt,
+		jsonbArgOrNil(c.Address), c.Status, c.SubjectType, c.Source, jsonbArg(c.Attributes), c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -101,6 +101,10 @@ func (r *ClientRepository) List(ctx context.Context, customerID uuid.UUID, f dom
 	if f.Status != "" {
 		args = append(args, f.Status)
 		conds = append(conds, fmt.Sprintf("status = $%d::client_status", len(args)))
+	}
+	if f.SubjectType != "" {
+		args = append(args, f.SubjectType)
+		conds = append(conds, fmt.Sprintf("subject_type = $%d::client_subject_type", len(args)))
 	}
 	if f.Search != "" {
 		args = append(args, "%"+f.Search+"%")
@@ -171,14 +175,15 @@ func (r *ClientRepository) Update(ctx context.Context, customerID uuid.UUID, c *
 			phone        = NULLIF($6, ''),
 			address      = $7::jsonb,
 			status       = $8::client_status,
-			source       = NULLIF($9, ''),
-			attributes   = $10::jsonb
-		WHERE id = $11 AND customer_id = $12 AND deleted_at IS NULL
+			subject_type = $9::client_subject_type,
+			source       = NULLIF($10, ''),
+			attributes   = $11::jsonb
+		WHERE id = $12 AND customer_id = $13 AND deleted_at IS NULL
 		RETURNING created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query,
 		c.ProjectID, c.FirstName, c.LastName, c.CompanyName, c.Email, c.Phone,
-		jsonbArgOrNil(c.Address), c.Status, c.Source, jsonbArg(c.Attributes), c.ID, customerID,
+		jsonbArgOrNil(c.Address), c.Status, c.SubjectType, c.Source, jsonbArg(c.Attributes), c.ID, customerID,
 	).Scan(&c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
