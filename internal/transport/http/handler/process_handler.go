@@ -103,12 +103,13 @@ func (h *ProcessHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	in := service.ListProcessesInput{
-		Page:     atoiDefault(q.Get("page"), 0),
-		PageSize: atoiDefault(q.Get("page_size"), 0),
-		Status:   q.Get("status"),
-		Search:   q.Get("search"),
-		SortBy:   q.Get("sort_by"),
-		Order:    q.Get("order"),
+		Page:      atoiDefault(q.Get("page"), 0),
+		PageSize:  atoiDefault(q.Get("page_size"), 0),
+		ProjectID: parseUUIDPtr(q.Get("project_id")),
+		Status:    q.Get("status"),
+		Search:    q.Get("search"),
+		SortBy:    q.Get("sort_by"),
+		Order:     q.Get("order"),
 	}
 	out, err := h.service.ListProcesses(r.Context(), principal.CustomerID, in)
 	if err != nil {

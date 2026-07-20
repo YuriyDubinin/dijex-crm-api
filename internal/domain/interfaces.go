@@ -143,6 +143,23 @@ type TagRepository interface {
 	Detach(ctx context.Context, customerID, tagID, entityID uuid.UUID) error
 }
 
+// StatsRepository — агрегатные (read-only) выборки для дашборда. Все методы
+// скоупятся по customerID и учитывают soft-delete; StatsFilter ограничивает
+// период по created_at сущности.
+type StatsRepository interface {
+	Summary(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*SummaryStats, error)
+	DealStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*DealStats, error)
+	ClientStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*ClientStats, error)
+	TaskStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*TaskStats, error)
+	ProjectStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*ProjectStats, error)
+	ServiceStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*ServiceStats, error)
+	ProcessStats(ctx context.Context, customerID uuid.UUID, f StatsFilter) (*ProcessStats, error)
+	// TimeSeries — временной ряд по метрике. metric/interval уже провалидированы
+	// сервисом (whitelist); currency — опциональный фильтр валюты для денежных
+	// метрик ("" = все валюты).
+	TimeSeries(ctx context.Context, customerID uuid.UUID, metric, interval, currency string, f StatsFilter) ([]TimePoint, error)
+}
+
 type CustomFieldRepository interface {
 	CreateDefinition(ctx context.Context, d *CustomFieldDefinition) error
 	ListDefinitions(ctx context.Context, customerID uuid.UUID, f CustomFieldDefinitionListFilter) ([]*CustomFieldDefinition, int, error)

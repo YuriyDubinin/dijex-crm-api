@@ -16,6 +16,7 @@ import (
 // ───────────────────────── Process DTO ─────────────────────────
 
 type CreateProcessInput struct {
+	ProjectID   *uuid.UUID
 	Name        string
 	Description string
 	Status      string
@@ -24,6 +25,7 @@ type CreateProcessInput struct {
 
 type UpdateProcessInput struct {
 	ID          uuid.UUID
+	ProjectID   *uuid.UUID
 	Name        string
 	Description string
 	Status      string
@@ -31,16 +33,18 @@ type UpdateProcessInput struct {
 }
 
 type ListProcessesInput struct {
-	Page     int
-	PageSize int
-	Status   string
-	Search   string
-	SortBy   string
-	Order    string
+	Page      int
+	PageSize  int
+	ProjectID *uuid.UUID
+	Status    string
+	Search    string
+	SortBy    string
+	Order     string
 }
 
 type ProcessItem struct {
 	ID          uuid.UUID
+	ProjectID   *uuid.UUID
 	Name        string
 	Description string
 	Status      string
@@ -97,13 +101,14 @@ type DeleteProcessStageOutput struct {
 // ───────────────────────── Service ─────────────────────────
 
 type ProcessService struct {
-	repo   domain.ProcessRepository
-	logger *slog.Logger
-	clock  func() time.Time
+	repo     domain.ProcessRepository
+	projects ProjectChecker
+	logger   *slog.Logger
+	clock    func() time.Time
 }
 
-func NewProcessService(repo domain.ProcessRepository, logger *slog.Logger) *ProcessService {
-	return &ProcessService{repo: repo, logger: logger, clock: time.Now}
+func NewProcessService(repo domain.ProcessRepository, projects ProjectChecker, logger *slog.Logger) *ProcessService {
+	return &ProcessService{repo: repo, projects: projects, logger: logger, clock: time.Now}
 }
 
 func (s *ProcessService) CreateProcess(ctx context.Context, customerID uuid.UUID, in CreateProcessInput) (*ProcessItem, error) {
@@ -111,7 +116,11 @@ func (s *ProcessService) CreateProcess(ctx context.Context, customerID uuid.UUID
 	in.Description = strings.TrimSpace(in.Description)
 	in.Status = normalizeStatus(in.Status, domain.ProcessStatusActive)
 
-	if errs := validateProcess(in.Name, in.Status, in.Attributes); len(errs) > 0 {
+	errs := validateProcess(in.Name, in.Status, in.Attributes)
+	if ve := ensureProjectOwned(ctx, s.projects, customerID, in.ProjectID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if len(errs) > 0 {
 		return nil, errs
 	}
 
@@ -123,6 +132,7 @@ func (s *ProcessService) CreateProcess(ctx context.Context, customerID uuid.UUID
 	p := &domain.Process{
 		ID:          uuid.New(),
 		CustomerID:  customerID,
+		ProjectID:   in.ProjectID,
 		Name:        in.Name,
 		Description: in.Description,
 		Status:      in.Status,
@@ -143,7 +153,11 @@ func (s *ProcessService) UpdateProcess(ctx context.Context, customerID uuid.UUID
 	in.Description = strings.TrimSpace(in.Description)
 	in.Status = normalizeStatus(in.Status, domain.ProcessStatusActive)
 
-	if errs := validateProcess(in.Name, in.Status, in.Attributes); len(errs) > 0 {
+	errs := validateProcess(in.Name, in.Status, in.Attributes)
+	if ve := ensureProjectOwned(ctx, s.projects, customerID, in.ProjectID); ve != nil {
+		errs = append(errs, ve)
+	}
+	if len(errs) > 0 {
 		return nil, errs
 	}
 
@@ -155,6 +169,7 @@ func (s *ProcessService) UpdateProcess(ctx context.Context, customerID uuid.UUID
 	p := &domain.Process{
 		ID:          in.ID,
 		CustomerID:  customerID,
+		ProjectID:   in.ProjectID,
 		Name:        in.Name,
 		Description: in.Description,
 		Status:      in.Status,
@@ -176,12 +191,13 @@ func (s *ProcessService) ListProcesses(ctx context.Context, customerID uuid.UUID
 
 	page, size, offset := clampPagination(in.Page, in.PageSize)
 	filter := domain.ProcessListFilter{
-		Status:   status,
-		Search:   strings.TrimSpace(in.Search),
-		Limit:    size,
-		Offset:   offset,
-		SortBy:   in.SortBy,
-		SortDesc: strings.ToLower(in.Order) != "asc",
+		ProjectID: in.ProjectID,
+		Status:    status,
+		Search:    strings.TrimSpace(in.Search),
+		Limit:     size,
+		Offset:    offset,
+		SortBy:    in.SortBy,
+		SortDesc:  strings.ToLower(in.Order) != "asc",
 	}
 
 	items, total, err := s.repo.List(ctx, customerID, filter)
@@ -324,6 +340,7 @@ func validateStage(name string, attrs json.RawMessage) domain.ValidationErrors {
 func processToItem(p *domain.Process) *ProcessItem {
 	return &ProcessItem{
 		ID:          p.ID,
+		ProjectID:   p.ProjectID,
 		Name:        p.Name,
 		Description: p.Description,
 		Status:      p.Status,

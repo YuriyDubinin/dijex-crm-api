@@ -12,6 +12,7 @@ import (
 // ───────────────────────── Process ─────────────────────────
 
 type CreateProcessHTTPRequest struct {
+	ProjectID   *uuid.UUID      `json:"project_id"  validate:"omitempty"`
 	Name        string          `json:"name"        validate:"required,min=2,max=255"`
 	Description string          `json:"description" validate:"omitempty,max=5000"`
 	Status      string          `json:"status"      validate:"omitempty,oneof=ACTIVE COMPLETED FAILED"`
@@ -20,6 +21,7 @@ type CreateProcessHTTPRequest struct {
 
 func (r CreateProcessHTTPRequest) ToServiceInput() service.CreateProcessInput {
 	return service.CreateProcessInput{
+		ProjectID:   r.ProjectID,
 		Name:        r.Name,
 		Description: r.Description,
 		Status:      r.Status,
@@ -29,6 +31,7 @@ func (r CreateProcessHTTPRequest) ToServiceInput() service.CreateProcessInput {
 
 type UpdateProcessHTTPRequest struct {
 	ID          uuid.UUID       `json:"id"          validate:"required"`
+	ProjectID   *uuid.UUID      `json:"project_id"  validate:"omitempty"`
 	Name        string          `json:"name"        validate:"required,min=2,max=255"`
 	Description string          `json:"description" validate:"omitempty,max=5000"`
 	Status      string          `json:"status"      validate:"omitempty,oneof=ACTIVE COMPLETED FAILED"`
@@ -38,6 +41,7 @@ type UpdateProcessHTTPRequest struct {
 func (r UpdateProcessHTTPRequest) ToServiceInput() service.UpdateProcessInput {
 	return service.UpdateProcessInput{
 		ID:          r.ID,
+		ProjectID:   r.ProjectID,
 		Name:        r.Name,
 		Description: r.Description,
 		Status:      r.Status,
@@ -47,6 +51,7 @@ func (r UpdateProcessHTTPRequest) ToServiceInput() service.UpdateProcessInput {
 
 type ProcessHTTPResponse struct {
 	ID          uuid.UUID       `json:"id"`
+	ProjectID   *uuid.UUID      `json:"project_id"`
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	Status      string          `json:"status"`
@@ -63,6 +68,7 @@ func fromProcessItem(p service.ProcessItem) ProcessHTTPResponse {
 	}
 	return ProcessHTTPResponse{
 		ID:          p.ID,
+		ProjectID:   p.ProjectID,
 		Name:        p.Name,
 		Description: p.Description,
 		Status:      p.Status,

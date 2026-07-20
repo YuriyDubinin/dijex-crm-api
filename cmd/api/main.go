@@ -58,6 +58,7 @@ func main() {
 	entityLinkRepo := postgres.NewEntityLinkRepository(pool)
 	tagRepo := postgres.NewTagRepository(pool)
 	customFieldRepo := postgres.NewCustomFieldRepository(pool)
+	statsRepo := postgres.NewStatsRepository(pool)
 
 	// ───────── Крипто ─────────
 	passwordHasher, err := crypto.NewPasswordHasher(cfg.Auth.PasswordHashCost)
@@ -80,11 +81,12 @@ func main() {
 	taskService := service.NewTaskService(taskRepo, projectRepo, clientRepo, dealRepo, serviceRepo, processRepo, processRepo, userRepo, log)
 	calendarService := service.NewCalendarEventService(calendarRepo, projectRepo, entityRepo, log)
 	dealService := service.NewDealService(dealRepo, projectRepo, clientRepo, serviceRepo, processRepo, userRepo, log)
-	processService := service.NewProcessService(processRepo, log)
+	processService := service.NewProcessService(processRepo, projectRepo, log)
 	overviewService := service.NewOverviewService(dealRepo, clientRepo, projectRepo, taskRepo, serviceRepo, processRepo, entityLinkRepo, log)
 	entityLinkService := service.NewEntityLinkService(entityLinkRepo, entityRepo, log)
 	tagService := service.NewTagService(tagRepo, entityRepo, log)
 	customFieldService := service.NewCustomFieldService(customFieldRepo, entityRepo, log)
+	statsService := service.NewStatsService(statsRepo, log)
 
 	v := validator.New()
 
@@ -105,6 +107,7 @@ func main() {
 	entityLinkHandler := handler.NewEntityLinkHandler(entityLinkService, v, log)
 	tagHandler := handler.NewTagHandler(tagService, v, log)
 	customFieldHandler := handler.NewCustomFieldHandler(customFieldService, v, log)
+	statsHandler := handler.NewStatsHandler(statsService, log)
 
 	router := transporthttp.NewRouter(transporthttp.Deps{
 		Logger:               log,
@@ -125,6 +128,7 @@ func main() {
 		EntityLinkHandler:    entityLinkHandler,
 		TagHandler:           tagHandler,
 		CustomFieldHandler:   customFieldHandler,
+		StatsHandler:         statsHandler,
 	})
 	srv := transporthttp.NewServer(cfg.HTTP, router, log)
 

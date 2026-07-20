@@ -32,6 +32,7 @@ type Deps struct {
 	EntityLinkHandler    *handler.EntityLinkHandler
 	TagHandler           *handler.TagHandler
 	CustomFieldHandler   *handler.CustomFieldHandler
+	StatsHandler         *handler.StatsHandler
 }
 
 func NewRouter(deps Deps) http.Handler {
@@ -139,6 +140,16 @@ func NewRouter(deps Deps) http.Handler {
 			r.Post("/custom-fields/values/set", deps.CustomFieldHandler.SetValue)
 			r.Get("/custom-fields/values/list", deps.CustomFieldHandler.ListValues)
 			r.Delete("/custom-fields/values/unset", deps.CustomFieldHandler.UnsetValue)
+
+			// Dashboard / статистика (read-only, для дашборда и графиков)
+			r.Get("/stats/summary", deps.StatsHandler.Summary)
+			r.Get("/stats/deals", deps.StatsHandler.Deals)
+			r.Get("/stats/clients", deps.StatsHandler.Clients)
+			r.Get("/stats/tasks", deps.StatsHandler.Tasks)
+			r.Get("/stats/projects", deps.StatsHandler.Projects)
+			r.Get("/stats/services", deps.StatsHandler.Services)
+			r.Get("/stats/processes", deps.StatsHandler.Processes)
+			r.Get("/stats/timeseries", deps.StatsHandler.TimeSeries)
 		})
 	})
 

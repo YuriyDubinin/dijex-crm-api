@@ -13,6 +13,7 @@ import (
 type Process struct {
 	ID          uuid.UUID
 	CustomerID  uuid.UUID
+	ProjectID   *uuid.UUID
 	Name        string
 	Description string
 	Status      string // ENUM process_status
@@ -65,8 +66,9 @@ type ProcessStage struct {
 
 // ProcessListFilter — параметры выборки списка процессов внутри тенанта.
 type ProcessListFilter struct {
-	Status string
-	Search string // ILIKE по name
+	ProjectID *uuid.UUID
+	Status    string
+	Search    string // ILIKE по name
 
 	Limit    int
 	Offset   int

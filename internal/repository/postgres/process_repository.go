@@ -26,7 +26,7 @@ func NewProcessRepository(pool *pgxpool.Pool) *ProcessRepository {
 // ───────────────────────── Процессы ─────────────────────────
 
 const processColumns = `
-	id, customer_id, name, COALESCE(description, ''), status::text,
+	id, customer_id, project_id, name, COALESCE(description, ''), status::text,
 	closed_at, attributes::text, created_at, updated_at, deleted_at
 `
 
@@ -36,7 +36,7 @@ func scanProcess(row pgx.Row) (*domain.Process, error) {
 		attr []byte
 	)
 	err := row.Scan(
-		&p.ID, &p.CustomerID, &p.Name, &p.Description, &p.Status,
+		&p.ID, &p.CustomerID, &p.ProjectID, &p.Name, &p.Description, &p.Status,
 		&p.ClosedAt, &attr, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
 	)
 	if err != nil {
@@ -51,12 +51,12 @@ func scanProcess(row pgx.Row) (*domain.Process, error) {
 func (r *ProcessRepository) Create(ctx context.Context, p *domain.Process) error {
 	const query = `
 		INSERT INTO processes
-			(id, customer_id, name, description, status, closed_at, attributes, created_at, updated_at)
+			(id, customer_id, project_id, name, description, status, closed_at, attributes, created_at, updated_at)
 		VALUES
-			($1, $2, $3, NULLIF($4, ''), $5::process_status, $6, $7::jsonb, $8, $9)
+			($1, $2, $3, $4, NULLIF($5, ''), $6::process_status, $7, $8::jsonb, $9, $10)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		p.ID, p.CustomerID, p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.CreatedAt, p.UpdatedAt,
+		p.ID, p.CustomerID, p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -86,6 +86,10 @@ func (r *ProcessRepository) List(ctx context.Context, customerID uuid.UUID, f do
 	conds := []string{"customer_id = $1", "deleted_at IS NULL"}
 	args := []any{customerID}
 
+	if f.ProjectID != nil {
+		args = append(args, *f.ProjectID)
+		conds = append(conds, fmt.Sprintf("project_id = $%d", len(args)))
+	}
 	if f.Status != "" {
 		args = append(args, f.Status)
 		conds = append(conds, fmt.Sprintf("status = $%d::process_status", len(args)))
@@ -148,16 +152,17 @@ func (r *ProcessRepository) GetByID(ctx context.Context, customerID, id uuid.UUI
 func (r *ProcessRepository) Update(ctx context.Context, customerID uuid.UUID, p *domain.Process) error {
 	const query = `
 		UPDATE processes SET
-			name        = $1,
-			description = NULLIF($2, ''),
-			status      = $3::process_status,
-			closed_at   = $4,
-			attributes  = $5::jsonb
-		WHERE id = $6 AND customer_id = $7 AND deleted_at IS NULL
+			project_id  = $1,
+			name        = $2,
+			description = NULLIF($3, ''),
+			status      = $4::process_status,
+			closed_at   = $5,
+			attributes  = $6::jsonb
+		WHERE id = $7 AND customer_id = $8 AND deleted_at IS NULL
 		RETURNING created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query,
-		p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.ID, customerID,
+		p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.ID, customerID,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
