@@ -130,3 +130,12 @@ func customerToItem(c *domain.Customer) *CustomerItem {
 		UpdatedAt:          c.UpdatedAt,
 	}
 }
+
+// normalizeTimezone — пустая таймзона трактуется как UTC.
+func normalizeTimezone(tz string) string {
+	tz = strings.TrimSpace(tz)
+	if tz == "" {
+		return "UTC"
+	}
+	return tz
+}

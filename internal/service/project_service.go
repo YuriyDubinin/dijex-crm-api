@@ -43,6 +43,8 @@ type ListProjectsInput struct {
 	PageSize int
 	Status   string
 	Search   string
+	From     *time.Time
+	To       *time.Time
 	SortBy   string
 	Order    string // "asc" | "desc"
 }
@@ -156,6 +158,8 @@ func (s *ProjectService) ListProjects(ctx context.Context, customerID uuid.UUID,
 	filter := domain.ProjectListFilter{
 		Status:   status,
 		Search:   strings.TrimSpace(in.Search),
+		From:     in.From,
+		To:       in.To,
 		Limit:    size,
 		Offset:   offset,
 		SortBy:   in.SortBy,

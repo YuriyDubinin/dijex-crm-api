@@ -52,7 +52,6 @@ func main() {
 	serviceRepo := postgres.NewServiceRepository(pool)
 	clientRepo := postgres.NewClientRepository(pool)
 	taskRepo := postgres.NewTaskRepository(pool)
-	calendarRepo := postgres.NewCalendarEventRepository(pool)
 	dealRepo := postgres.NewDealRepository(pool)
 	processRepo := postgres.NewProcessRepository(pool)
 	entityLinkRepo := postgres.NewEntityLinkRepository(pool)
@@ -79,7 +78,6 @@ func main() {
 	serviceService := service.NewServiceService(serviceRepo, projectRepo, log)
 	clientService := service.NewClientService(clientRepo, projectRepo, log)
 	taskService := service.NewTaskService(taskRepo, projectRepo, clientRepo, dealRepo, serviceRepo, processRepo, processRepo, userRepo, log)
-	calendarService := service.NewCalendarEventService(calendarRepo, projectRepo, entityRepo, log)
 	dealService := service.NewDealService(dealRepo, projectRepo, clientRepo, serviceRepo, processRepo, userRepo, log)
 	processService := service.NewProcessService(processRepo, projectRepo, log)
 	overviewService := service.NewOverviewService(dealRepo, clientRepo, projectRepo, taskRepo, serviceRepo, processRepo, entityLinkRepo, log)
@@ -87,6 +85,7 @@ func main() {
 	tagService := service.NewTagService(tagRepo, entityRepo, log)
 	customFieldService := service.NewCustomFieldService(customFieldRepo, entityRepo, log)
 	statsService := service.NewStatsService(statsRepo, log)
+	agendaService := service.NewAgendaService(taskRepo, dealRepo, projectRepo, log)
 
 	v := validator.New()
 
@@ -100,7 +99,6 @@ func main() {
 	serviceHandler := handler.NewServiceHandler(serviceService, v, log)
 	clientHandler := handler.NewClientHandler(clientService, v, log)
 	taskHandler := handler.NewTaskHandler(taskService, v, log)
-	calendarHandler := handler.NewCalendarEventHandler(calendarService, v, log)
 	dealHandler := handler.NewDealHandler(dealService, v, log)
 	processHandler := handler.NewProcessHandler(processService, v, log)
 	overviewHandler := handler.NewOverviewHandler(overviewService, log)
@@ -108,27 +106,28 @@ func main() {
 	tagHandler := handler.NewTagHandler(tagService, v, log)
 	customFieldHandler := handler.NewCustomFieldHandler(customFieldService, v, log)
 	statsHandler := handler.NewStatsHandler(statsService, log)
+	agendaHandler := handler.NewAgendaHandler(agendaService, log)
 
 	router := transporthttp.NewRouter(transporthttp.Deps{
-		Logger:               log,
-		Authenticator:        authService,
-		HealthHandler:        healthHandler,
-		AuthHandler:          authHandler,
-		MeHandler:            meHandler,
-		CustomerHandler:      customerHandler,
-		UserHandler:          userHandler,
-		ProjectHandler:       projectHandler,
-		ServiceHandler:       serviceHandler,
-		ClientHandler:        clientHandler,
-		TaskHandler:          taskHandler,
-		CalendarEventHandler: calendarHandler,
-		DealHandler:          dealHandler,
-		ProcessHandler:       processHandler,
-		OverviewHandler:      overviewHandler,
-		EntityLinkHandler:    entityLinkHandler,
-		TagHandler:           tagHandler,
-		CustomFieldHandler:   customFieldHandler,
-		StatsHandler:         statsHandler,
+		Logger:             log,
+		Authenticator:      authService,
+		HealthHandler:      healthHandler,
+		AuthHandler:        authHandler,
+		MeHandler:          meHandler,
+		CustomerHandler:    customerHandler,
+		UserHandler:        userHandler,
+		ProjectHandler:     projectHandler,
+		ServiceHandler:     serviceHandler,
+		ClientHandler:      clientHandler,
+		TaskHandler:        taskHandler,
+		DealHandler:        dealHandler,
+		ProcessHandler:     processHandler,
+		OverviewHandler:    overviewHandler,
+		EntityLinkHandler:  entityLinkHandler,
+		TagHandler:         tagHandler,
+		CustomFieldHandler: customFieldHandler,
+		StatsHandler:       statsHandler,
+		AgendaHandler:      agendaHandler,
 	})
 	srv := transporthttp.NewServer(cfg.HTTP, router, log)
 

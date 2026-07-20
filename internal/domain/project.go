@@ -45,8 +45,10 @@ func IsValidProjectStatus(s string) bool {
 // ProjectListFilter — параметры выборки списка проектов внутри тенанта.
 // customerID передаётся отдельным аргументом метода, не полем фильтра.
 type ProjectListFilter struct {
-	Status string // "" = любой
-	Search string // ILIKE по name/direction
+	Status string     // "" = любой
+	Search string     // ILIKE по name/direction
+	From   *time.Time // окно календаря: проект пересекает [From, To]
+	To     *time.Time
 
 	Limit    int
 	Offset   int

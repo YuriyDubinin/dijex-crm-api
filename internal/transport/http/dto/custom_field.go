@@ -12,7 +12,7 @@ import (
 // ───────────────────────── Определения ─────────────────────────
 
 type CreateDefinitionHTTPRequest struct {
-	EntityType string          `json:"entity_type" validate:"required,oneof=PROJECT SERVICE CLIENT TASK CALENDAR_EVENT DEAL CUSTOMER_USER"`
+	EntityType string          `json:"entity_type" validate:"required,oneof=PROJECT SERVICE CLIENT TASK DEAL CUSTOMER_USER"`
 	FieldKey   string          `json:"field_key"   validate:"required,max=100"`
 	Label      string          `json:"label"       validate:"required,max=255"`
 	FieldType  string          `json:"field_type"  validate:"required,oneof=TEXT NUMBER BOOLEAN DATE DATETIME JSON SELECT"`

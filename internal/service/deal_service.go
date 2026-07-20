@@ -62,6 +62,8 @@ type ListDealsInput struct {
 	Type       string
 	AssignedTo *uuid.UUID
 	Search     string
+	CloseFrom  *time.Time
+	CloseTo    *time.Time
 	SortBy     string
 	Order      string
 }
@@ -227,6 +229,8 @@ func (s *DealService) ListDeals(ctx context.Context, customerID uuid.UUID, in Li
 		Type:       dealType,
 		AssignedTo: in.AssignedTo,
 		Search:     strings.TrimSpace(in.Search),
+		CloseFrom:  in.CloseFrom,
+		CloseTo:    in.CloseTo,
 		Limit:      size,
 		Offset:     offset,
 		SortBy:     in.SortBy,

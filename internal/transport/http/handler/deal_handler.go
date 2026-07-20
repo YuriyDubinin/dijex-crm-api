@@ -104,10 +104,13 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		ProjectID:  parseUUIDPtr(q.Get("project_id")),
 		ClientID:   parseUUIDPtr(q.Get("client_id")),
 		ServiceID:  parseUUIDPtr(q.Get("service_id")),
+		ProcessID:  parseUUIDPtr(q.Get("process_id")),
 		Status:     q.Get("status"),
 		Type:       q.Get("type"),
 		AssignedTo: parseUUIDPtr(q.Get("assigned_to")),
 		Search:     q.Get("search"),
+		CloseFrom:  parseStatsBound(q.Get("close_from"), false),
+		CloseTo:    parseStatsBound(q.Get("close_to"), true),
 		SortBy:     q.Get("sort_by"),
 		Order:      q.Get("order"),
 	}

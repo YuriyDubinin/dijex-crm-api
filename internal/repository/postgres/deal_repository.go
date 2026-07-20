@@ -125,6 +125,14 @@ func (r *DealRepository) List(ctx context.Context, customerID uuid.UUID, f domai
 		args = append(args, "%"+f.Search+"%")
 		conds = append(conds, fmt.Sprintf("title ILIKE $%d", len(args)))
 	}
+	if f.CloseFrom != nil {
+		args = append(args, *f.CloseFrom)
+		conds = append(conds, fmt.Sprintf("expected_close_at >= $%d", len(args)))
+	}
+	if f.CloseTo != nil {
+		args = append(args, *f.CloseTo)
+		conds = append(conds, fmt.Sprintf("expected_close_at <= $%d", len(args)))
+	}
 	where := "WHERE " + strings.Join(conds, " AND ")
 
 	var total int

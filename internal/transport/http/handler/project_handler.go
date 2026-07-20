@@ -102,6 +102,8 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		PageSize: atoiDefault(q.Get("page_size"), 0),
 		Status:   q.Get("status"),
 		Search:   q.Get("search"),
+		From:     parseStatsBound(q.Get("from"), false),
+		To:       parseStatsBound(q.Get("to"), true),
 		SortBy:   q.Get("sort_by"),
 		Order:    q.Get("order"),
 	}

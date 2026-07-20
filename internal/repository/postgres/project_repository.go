@@ -97,6 +97,16 @@ func (r *ProjectRepository) List(ctx context.Context, customerID uuid.UUID, f do
 		args = append(args, "%"+f.Search+"%")
 		conds = append(conds, fmt.Sprintf("(name ILIKE $%d OR direction ILIKE $%d)", len(args), len(args)))
 	}
+	// Окно календаря: проект «активен» в [From, To], если его интервал
+	// пересекает окно (NULL-граница трактуется как открытая).
+	if f.To != nil {
+		args = append(args, *f.To)
+		conds = append(conds, fmt.Sprintf("(starts_at IS NULL OR starts_at <= $%d)", len(args)))
+	}
+	if f.From != nil {
+		args = append(args, *f.From)
+		conds = append(conds, fmt.Sprintf("(ends_at IS NULL OR ends_at >= $%d)", len(args)))
+	}
 	where := "WHERE " + strings.Join(conds, " AND ")
 
 	var total int

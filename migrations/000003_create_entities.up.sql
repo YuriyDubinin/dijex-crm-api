@@ -9,7 +9,6 @@ CREATE TYPE entity_type AS ENUM (
     'SERVICE',
     'CLIENT',
     'TASK',
-    'CALENDAR_EVENT',
     'CUSTOMER_USER'
 );
 

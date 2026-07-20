@@ -80,18 +80,6 @@ type TaskRepository interface {
 	SoftDelete(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
 }
 
-type CalendarEventRepository interface {
-	Create(ctx context.Context, e *CalendarEvent) error
-	List(ctx context.Context, customerID uuid.UUID, f CalendarEventListFilter) ([]*CalendarEvent, int, error)
-	GetByID(ctx context.Context, customerID, id uuid.UUID) (*CalendarEvent, error)
-	Update(ctx context.Context, customerID uuid.UUID, e *CalendarEvent) error
-	SoftDelete(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
-	// Участники события.
-	AddAttendee(ctx context.Context, customerID uuid.UUID, a *CalendarEventAttendee) error
-	RemoveAttendee(ctx context.Context, customerID, eventID, attendeeEntityID uuid.UUID) error
-	ListAttendees(ctx context.Context, customerID, eventID uuid.UUID) ([]*CalendarEventAttendee, error)
-}
-
 type DealRepository interface {
 	Create(ctx context.Context, d *Deal) error
 	List(ctx context.Context, customerID uuid.UUID, f DealListFilter) ([]*Deal, int, error)
@@ -101,8 +89,7 @@ type DealRepository interface {
 }
 
 // ProcessRepository — процессы и их пользовательские этапы (process_stages).
-// Методы этапов живут здесь же (этап — дочерняя сущность процесса), по образцу
-// участников у CalendarEventRepository.
+// Методы этапов живут здесь же (этап — дочерняя сущность процесса).
 type ProcessRepository interface {
 	Create(ctx context.Context, p *Process) error
 	List(ctx context.Context, customerID uuid.UUID, f ProcessListFilter) ([]*Process, int, error)

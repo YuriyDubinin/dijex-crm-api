@@ -81,7 +81,9 @@ type DealListFilter struct {
 	Status     string
 	Type       string
 	AssignedTo *uuid.UUID
-	Search     string // ILIKE по title
+	Search     string     // ILIKE по title
+	CloseFrom  *time.Time // expected_close_at >= CloseFrom
+	CloseTo    *time.Time // expected_close_at <= CloseTo
 
 	Limit    int
 	Offset   int

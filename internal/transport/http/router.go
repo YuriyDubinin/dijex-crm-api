@@ -16,23 +16,23 @@ type Deps struct {
 	Logger        *slog.Logger
 	Authenticator domain.Authenticator
 
-	HealthHandler        *handler.HealthHandler
-	AuthHandler          *handler.AuthHandler
-	MeHandler            *handler.MeHandler
-	CustomerHandler      *handler.CustomerHandler
-	UserHandler          *handler.UserHandler
-	ProjectHandler       *handler.ProjectHandler
-	ServiceHandler       *handler.ServiceHandler
-	ClientHandler        *handler.ClientHandler
-	TaskHandler          *handler.TaskHandler
-	CalendarEventHandler *handler.CalendarEventHandler
-	DealHandler          *handler.DealHandler
-	ProcessHandler       *handler.ProcessHandler
-	OverviewHandler      *handler.OverviewHandler
-	EntityLinkHandler    *handler.EntityLinkHandler
-	TagHandler           *handler.TagHandler
-	CustomFieldHandler   *handler.CustomFieldHandler
-	StatsHandler         *handler.StatsHandler
+	HealthHandler      *handler.HealthHandler
+	AuthHandler        *handler.AuthHandler
+	MeHandler          *handler.MeHandler
+	CustomerHandler    *handler.CustomerHandler
+	UserHandler        *handler.UserHandler
+	ProjectHandler     *handler.ProjectHandler
+	ServiceHandler     *handler.ServiceHandler
+	ClientHandler      *handler.ClientHandler
+	TaskHandler        *handler.TaskHandler
+	DealHandler        *handler.DealHandler
+	ProcessHandler     *handler.ProcessHandler
+	OverviewHandler    *handler.OverviewHandler
+	EntityLinkHandler  *handler.EntityLinkHandler
+	TagHandler         *handler.TagHandler
+	CustomFieldHandler *handler.CustomFieldHandler
+	StatsHandler       *handler.StatsHandler
+	AgendaHandler      *handler.AgendaHandler
 }
 
 func NewRouter(deps Deps) http.Handler {
@@ -92,14 +92,8 @@ func NewRouter(deps Deps) http.Handler {
 			r.Put("/tasks/update", deps.TaskHandler.Update)
 			r.Delete("/tasks/delete", deps.TaskHandler.Delete)
 
-			// Calendar events
-			r.Post("/calendar-events/create", deps.CalendarEventHandler.Create)
-			r.Get("/calendar-events/list", deps.CalendarEventHandler.List)
-			r.Put("/calendar-events/update", deps.CalendarEventHandler.Update)
-			r.Delete("/calendar-events/delete", deps.CalendarEventHandler.Delete)
-			r.Post("/calendar-events/attendees/add", deps.CalendarEventHandler.AddAttendee)
-			r.Delete("/calendar-events/attendees/remove", deps.CalendarEventHandler.RemoveAttendee)
-			r.Get("/calendar-events/attendees/list", deps.CalendarEventHandler.ListAttendees)
+			// Календарь: единый агрегатор всех датированных сущностей окна
+			r.Get("/calendar/agenda", deps.AgendaHandler.Agenda)
 
 			// Deals (сделки)
 			r.Post("/deals/create", deps.DealHandler.Create)
