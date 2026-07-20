@@ -1,0 +1,2 @@
+ALTER TABLE processes DROP COLUMN IF EXISTS ends_at;
+ALTER TABLE processes DROP COLUMN IF EXISTS starts_at;

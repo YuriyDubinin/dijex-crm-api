@@ -18,6 +18,8 @@ type Process struct {
 	Description string
 	Status      string // ENUM process_status
 	ClosedAt    *time.Time
+	StartsAt    *time.Time // плановое начало (для календаря)
+	EndsAt      *time.Time // плановое окончание (для календаря)
 	Attributes  json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -68,7 +70,9 @@ type ProcessStage struct {
 type ProcessListFilter struct {
 	ProjectID *uuid.UUID
 	Status    string
-	Search    string // ILIKE по name
+	Search    string     // ILIKE по name
+	From      *time.Time // окно календаря: процесс пересекает [From, To]
+	To        *time.Time
 
 	Limit    int
 	Offset   int

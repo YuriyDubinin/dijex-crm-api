@@ -40,14 +40,15 @@ func (in AgendaInput) want(t string) bool {
 // AgendaService — read-only агрегатор датированных сущностей для календаря.
 // Ничего не пишет; переиспользует List-методы репозиториев с оконными фильтрами.
 type AgendaService struct {
-	tasks    domain.TaskRepository
-	deals    domain.DealRepository
-	projects domain.ProjectRepository
-	logger   *slog.Logger
+	tasks     domain.TaskRepository
+	deals     domain.DealRepository
+	projects  domain.ProjectRepository
+	processes domain.ProcessRepository
+	logger    *slog.Logger
 }
 
-func NewAgendaService(tasks domain.TaskRepository, deals domain.DealRepository, projects domain.ProjectRepository, logger *slog.Logger) *AgendaService {
-	return &AgendaService{tasks: tasks, deals: deals, projects: projects, logger: logger}
+func NewAgendaService(tasks domain.TaskRepository, deals domain.DealRepository, projects domain.ProjectRepository, processes domain.ProcessRepository, logger *slog.Logger) *AgendaService {
+	return &AgendaService{tasks: tasks, deals: deals, projects: projects, processes: processes, logger: logger}
 }
 
 // Agenda собирает все датированные сущности, попадающие в окно [From, To].
@@ -93,6 +94,20 @@ func (s *AgendaService) Agenda(ctx context.Context, customerID uuid.UUID, in Age
 				continue // без дат — на календаре не размещается
 			}
 			out = append(out, AgendaItem{Type: "project", ID: p.ID, Title: p.Name, Start: p.StartsAt, End: p.EndsAt, AllDay: true, Status: p.Status})
+		}
+	}
+
+	// Процессы: интервал [starts_at, ends_at], пересекающий окно (многодневная полоса).
+	if in.want("process") {
+		processes, _, err := s.processes.List(ctx, customerID, domain.ProcessListFilter{From: in.From, To: in.To, Limit: agendaLimit})
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range processes {
+			if p.StartsAt == nil && p.EndsAt == nil {
+				continue // без дат — на календаре не размещается
+			}
+			out = append(out, AgendaItem{Type: "process", ID: p.ID, Title: p.Name, Start: p.StartsAt, End: p.EndsAt, AllDay: true, Status: p.Status})
 		}
 	}
 

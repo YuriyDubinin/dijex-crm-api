@@ -27,7 +27,7 @@ func NewAgendaHandler(svc AgendaService, logger *slog.Logger) *AgendaHandler {
 	return &AgendaHandler{service: svc, logger: logger}
 }
 
-var knownAgendaTypes = map[string]bool{"task": true, "deal": true, "project": true}
+var knownAgendaTypes = map[string]bool{"task": true, "deal": true, "project": true, "process": true}
 
 // Agenda обрабатывает GET /api/calendar/agenda?from=&to=&types=.
 func (h *AgendaHandler) Agenda(w http.ResponseWriter, r *http.Request) {

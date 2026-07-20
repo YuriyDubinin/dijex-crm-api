@@ -20,6 +20,8 @@ type CreateProcessInput struct {
 	Name        string
 	Description string
 	Status      string
+	StartsAt    *time.Time
+	EndsAt      *time.Time
 	Attributes  json.RawMessage
 }
 
@@ -29,6 +31,8 @@ type UpdateProcessInput struct {
 	Name        string
 	Description string
 	Status      string
+	StartsAt    *time.Time
+	EndsAt      *time.Time
 	Attributes  json.RawMessage
 }
 
@@ -38,6 +42,8 @@ type ListProcessesInput struct {
 	ProjectID *uuid.UUID
 	Status    string
 	Search    string
+	From      *time.Time
+	To        *time.Time
 	SortBy    string
 	Order     string
 }
@@ -49,6 +55,8 @@ type ProcessItem struct {
 	Description string
 	Status      string
 	ClosedAt    *time.Time
+	StartsAt    *time.Time
+	EndsAt      *time.Time
 	Attributes  json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -137,6 +145,8 @@ func (s *ProcessService) CreateProcess(ctx context.Context, customerID uuid.UUID
 		Description: in.Description,
 		Status:      in.Status,
 		ClosedAt:    closedAt,
+		StartsAt:    in.StartsAt,
+		EndsAt:      in.EndsAt,
 		Attributes:  in.Attributes,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -174,6 +184,8 @@ func (s *ProcessService) UpdateProcess(ctx context.Context, customerID uuid.UUID
 		Description: in.Description,
 		Status:      in.Status,
 		ClosedAt:    closedAt,
+		StartsAt:    in.StartsAt,
+		EndsAt:      in.EndsAt,
 		Attributes:  in.Attributes,
 	}
 	if err := s.repo.Update(ctx, customerID, p); err != nil {
@@ -194,6 +206,8 @@ func (s *ProcessService) ListProcesses(ctx context.Context, customerID uuid.UUID
 		ProjectID: in.ProjectID,
 		Status:    status,
 		Search:    strings.TrimSpace(in.Search),
+		From:      in.From,
+		To:        in.To,
 		Limit:     size,
 		Offset:    offset,
 		SortBy:    in.SortBy,
@@ -345,6 +359,8 @@ func processToItem(p *domain.Process) *ProcessItem {
 		Description: p.Description,
 		Status:      p.Status,
 		ClosedAt:    p.ClosedAt,
+		StartsAt:    p.StartsAt,
+		EndsAt:      p.EndsAt,
 		Attributes:  p.Attributes,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,

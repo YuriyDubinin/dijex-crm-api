@@ -27,7 +27,7 @@ func NewProcessRepository(pool *pgxpool.Pool) *ProcessRepository {
 
 const processColumns = `
 	id, customer_id, project_id, name, COALESCE(description, ''), status::text,
-	closed_at, attributes::text, created_at, updated_at, deleted_at
+	closed_at, starts_at, ends_at, attributes::text, created_at, updated_at, deleted_at
 `
 
 func scanProcess(row pgx.Row) (*domain.Process, error) {
@@ -37,7 +37,7 @@ func scanProcess(row pgx.Row) (*domain.Process, error) {
 	)
 	err := row.Scan(
 		&p.ID, &p.CustomerID, &p.ProjectID, &p.Name, &p.Description, &p.Status,
-		&p.ClosedAt, &attr, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
+		&p.ClosedAt, &p.StartsAt, &p.EndsAt, &attr, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func scanProcess(row pgx.Row) (*domain.Process, error) {
 func (r *ProcessRepository) Create(ctx context.Context, p *domain.Process) error {
 	const query = `
 		INSERT INTO processes
-			(id, customer_id, project_id, name, description, status, closed_at, attributes, created_at, updated_at)
+			(id, customer_id, project_id, name, description, status, closed_at, starts_at, ends_at, attributes, created_at, updated_at)
 		VALUES
-			($1, $2, $3, $4, NULLIF($5, ''), $6::process_status, $7, $8::jsonb, $9, $10)
+			($1, $2, $3, $4, NULLIF($5, ''), $6::process_status, $7, $8, $9, $10::jsonb, $11, $12)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		p.ID, p.CustomerID, p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.CreatedAt, p.UpdatedAt,
+		p.ID, p.CustomerID, p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, p.StartsAt, p.EndsAt, jsonbArg(p.Attributes), p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -97,6 +97,16 @@ func (r *ProcessRepository) List(ctx context.Context, customerID uuid.UUID, f do
 	if f.Search != "" {
 		args = append(args, "%"+f.Search+"%")
 		conds = append(conds, fmt.Sprintf("name ILIKE $%d", len(args)))
+	}
+	// Окно календаря: интервал [starts_at, ends_at] пересекает [From, To]
+	// (NULL-граница трактуется как открытая).
+	if f.To != nil {
+		args = append(args, *f.To)
+		conds = append(conds, fmt.Sprintf("(starts_at IS NULL OR starts_at <= $%d)", len(args)))
+	}
+	if f.From != nil {
+		args = append(args, *f.From)
+		conds = append(conds, fmt.Sprintf("(ends_at IS NULL OR ends_at >= $%d)", len(args)))
 	}
 	where := "WHERE " + strings.Join(conds, " AND ")
 
@@ -157,12 +167,14 @@ func (r *ProcessRepository) Update(ctx context.Context, customerID uuid.UUID, p 
 			description = NULLIF($3, ''),
 			status      = $4::process_status,
 			closed_at   = $5,
-			attributes  = $6::jsonb
-		WHERE id = $7 AND customer_id = $8 AND deleted_at IS NULL
+			starts_at   = $6,
+			ends_at     = $7,
+			attributes  = $8::jsonb
+		WHERE id = $9 AND customer_id = $10 AND deleted_at IS NULL
 		RETURNING created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query,
-		p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, jsonbArg(p.Attributes), p.ID, customerID,
+		p.ProjectID, p.Name, p.Description, p.Status, p.ClosedAt, p.StartsAt, p.EndsAt, jsonbArg(p.Attributes), p.ID, customerID,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -85,7 +85,7 @@ func main() {
 	tagService := service.NewTagService(tagRepo, entityRepo, log)
 	customFieldService := service.NewCustomFieldService(customFieldRepo, entityRepo, log)
 	statsService := service.NewStatsService(statsRepo, log)
-	agendaService := service.NewAgendaService(taskRepo, dealRepo, projectRepo, log)
+	agendaService := service.NewAgendaService(taskRepo, dealRepo, projectRepo, processRepo, log)
 
 	v := validator.New()
 

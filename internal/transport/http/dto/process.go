@@ -16,6 +16,8 @@ type CreateProcessHTTPRequest struct {
 	Name        string          `json:"name"        validate:"required,min=2,max=255"`
 	Description string          `json:"description" validate:"omitempty,max=5000"`
 	Status      string          `json:"status"      validate:"omitempty,oneof=ACTIVE COMPLETED FAILED"`
+	StartsAt    *string         `json:"starts_at"   validate:"omitempty,datetime=2006-01-02"`
+	EndsAt      *string         `json:"ends_at"     validate:"omitempty,datetime=2006-01-02"`
 	Attributes  json.RawMessage `json:"attributes"  validate:"omitempty"`
 }
 
@@ -25,6 +27,8 @@ func (r CreateProcessHTTPRequest) ToServiceInput() service.CreateProcessInput {
 		Name:        r.Name,
 		Description: r.Description,
 		Status:      r.Status,
+		StartsAt:    parseDatePtr(r.StartsAt),
+		EndsAt:      parseDatePtr(r.EndsAt),
 		Attributes:  r.Attributes,
 	}
 }
@@ -35,6 +39,8 @@ type UpdateProcessHTTPRequest struct {
 	Name        string          `json:"name"        validate:"required,min=2,max=255"`
 	Description string          `json:"description" validate:"omitempty,max=5000"`
 	Status      string          `json:"status"      validate:"omitempty,oneof=ACTIVE COMPLETED FAILED"`
+	StartsAt    *string         `json:"starts_at"   validate:"omitempty,datetime=2006-01-02"`
+	EndsAt      *string         `json:"ends_at"     validate:"omitempty,datetime=2006-01-02"`
 	Attributes  json.RawMessage `json:"attributes"  validate:"omitempty"`
 }
 
@@ -45,6 +51,8 @@ func (r UpdateProcessHTTPRequest) ToServiceInput() service.UpdateProcessInput {
 		Name:        r.Name,
 		Description: r.Description,
 		Status:      r.Status,
+		StartsAt:    parseDatePtr(r.StartsAt),
+		EndsAt:      parseDatePtr(r.EndsAt),
 		Attributes:  r.Attributes,
 	}
 }
@@ -56,6 +64,8 @@ type ProcessHTTPResponse struct {
 	Description string          `json:"description"`
 	Status      string          `json:"status"`
 	ClosedAt    *time.Time      `json:"closed_at"`
+	StartsAt    *string         `json:"starts_at"`
+	EndsAt      *string         `json:"ends_at"`
 	Attributes  json.RawMessage `json:"attributes"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
@@ -73,6 +83,8 @@ func fromProcessItem(p service.ProcessItem) ProcessHTTPResponse {
 		Description: p.Description,
 		Status:      p.Status,
 		ClosedAt:    p.ClosedAt,
+		StartsAt:    formatDatePtr(p.StartsAt),
+		EndsAt:      formatDatePtr(p.EndsAt),
 		Attributes:  attrs,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,

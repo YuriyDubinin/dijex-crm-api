@@ -108,6 +108,8 @@ func (h *ProcessHandler) List(w http.ResponseWriter, r *http.Request) {
 		ProjectID: parseUUIDPtr(q.Get("project_id")),
 		Status:    q.Get("status"),
 		Search:    q.Get("search"),
+		From:      parseStatsBound(q.Get("from"), false),
+		To:        parseStatsBound(q.Get("to"), true),
 		SortBy:    q.Get("sort_by"),
 		Order:     q.Get("order"),
 	}
