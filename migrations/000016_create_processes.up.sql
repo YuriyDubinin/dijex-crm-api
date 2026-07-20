@@ -13,7 +13,6 @@ CREATE TYPE process_status AS ENUM ('ACTIVE', 'COMPLETED', 'FAILED');
 CREATE TABLE processes (
     id          UUID PRIMARY KEY,
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-    project_id  UUID REFERENCES projects(id) ON DELETE SET NULL,
     name        TEXT NOT NULL,
     description TEXT,
     status      process_status NOT NULL DEFAULT 'ACTIVE',
@@ -25,7 +24,6 @@ CREATE TABLE processes (
 );
 
 CREATE INDEX idx_processes_customer ON processes (customer_id);
-CREATE INDEX idx_processes_project ON processes (project_id);
 CREATE INDEX idx_processes_status ON processes (customer_id, status);
 CREATE INDEX idx_processes_attributes_gin ON processes USING GIN (attributes);
 
