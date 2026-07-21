@@ -136,3 +136,22 @@ type DeleteClientHTTPResponse struct {
 func FromDeleteClientOutput(o *service.DeleteClientOutput) DeleteClientHTTPResponse {
 	return DeleteClientHTTPResponse{ID: o.ID, DeletedAt: o.DeletedAt}
 }
+
+// ClientProjectHTTPRequest — тело привязки/отвязки клиента к проекту (M:N).
+type ClientProjectHTTPRequest struct {
+	ClientID  uuid.UUID `json:"client_id"  validate:"required"`
+	ProjectID uuid.UUID `json:"project_id" validate:"required"`
+}
+
+// ClientProjectsHTTPResponse — список проектов клиента (основной + членства).
+type ClientProjectsHTTPResponse struct {
+	Items []ProjectHTTPResponse `json:"items"`
+}
+
+func FromClientProjects(items []service.ProjectItem) ClientProjectsHTTPResponse {
+	out := make([]ProjectHTTPResponse, 0, len(items))
+	for _, p := range items {
+		out = append(out, fromProjectItem(p))
+	}
+	return ClientProjectsHTTPResponse{Items: out}
+}

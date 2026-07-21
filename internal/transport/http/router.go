@@ -85,6 +85,10 @@ func NewRouter(deps Deps) http.Handler {
 			r.Put("/clients/update", deps.ClientHandler.Update)
 			r.Delete("/clients/delete", deps.ClientHandler.Delete)
 			r.Get("/clients/overview", deps.OverviewHandler.ClientOverview)
+			// Членство клиента в проектах (M:N)
+			r.Post("/clients/projects/attach", deps.ClientHandler.AttachProject)
+			r.Delete("/clients/projects/detach", deps.ClientHandler.DetachProject)
+			r.Get("/clients/projects/list", deps.ClientHandler.ListProjects)
 
 			// Tasks
 			r.Post("/tasks/create", deps.TaskHandler.Create)

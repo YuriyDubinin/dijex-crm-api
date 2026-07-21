@@ -70,6 +70,11 @@ type ClientRepository interface {
 	GetByID(ctx context.Context, customerID, id uuid.UUID) (*Client, error)
 	Update(ctx context.Context, customerID uuid.UUID, c *Client) error
 	SoftDelete(ctx context.Context, customerID, id uuid.UUID) (time.Time, error)
+	// Членство клиента в проектах (M:N, поверх «основного» project_id).
+	AttachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error
+	DetachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error
+	// ListProjects — все проекты клиента: «основной» project_id + членства.
+	ListProjects(ctx context.Context, customerID, clientID uuid.UUID) ([]*Project, error)
 }
 
 type TaskRepository interface {

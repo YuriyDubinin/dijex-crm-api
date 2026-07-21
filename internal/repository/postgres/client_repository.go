@@ -95,8 +95,12 @@ func (r *ClientRepository) List(ctx context.Context, customerID uuid.UUID, f dom
 	args := []any{customerID}
 
 	if f.ProjectID != nil {
+		// Клиент относится к проекту, если это его «основной» project_id ИЛИ есть
+		// членство в client_projects (M:N).
 		args = append(args, *f.ProjectID)
-		conds = append(conds, fmt.Sprintf("project_id = $%d", len(args)))
+		conds = append(conds, fmt.Sprintf(
+			"(project_id = $%d OR EXISTS (SELECT 1 FROM client_projects cp WHERE cp.client_id = clients.id AND cp.project_id = $%d))",
+			len(args), len(args)))
 	}
 	if f.Status != "" {
 		args = append(args, f.Status)
@@ -212,4 +216,57 @@ func (r *ClientRepository) SoftDelete(ctx context.Context, customerID, id uuid.U
 		return time.Time{}, fmt.Errorf("postgres: soft delete client %s: %w", id, err)
 	}
 	return deletedAt, nil
+}
+
+// AttachProject добавляет клиента в проект (M:N). Идемпотентно: повторная
+// привязка — не ошибка.
+func (r *ClientRepository) AttachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error {
+	const query = `
+		INSERT INTO client_projects (customer_id, client_id, project_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (client_id, project_id) DO NOTHING
+	`
+	if _, err := r.pool.Exec(ctx, query, customerID, clientID, projectID); err != nil {
+		return fmt.Errorf("postgres: attach client %s to project %s: %w", clientID, projectID, err)
+	}
+	return nil
+}
+
+// DetachProject убирает клиента из проекта. Идемпотентно: отсутствие связи — не ошибка.
+func (r *ClientRepository) DetachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error {
+	const query = `DELETE FROM client_projects WHERE customer_id = $1 AND client_id = $2 AND project_id = $3`
+	if _, err := r.pool.Exec(ctx, query, customerID, clientID, projectID); err != nil {
+		return fmt.Errorf("postgres: detach client %s from project %s: %w", clientID, projectID, err)
+	}
+	return nil
+}
+
+// ListProjects возвращает все проекты клиента: «основной» project_id + членства
+// (client_projects), без дублей, только не удалённые.
+func (r *ClientRepository) ListProjects(ctx context.Context, customerID, clientID uuid.UUID) ([]*domain.Project, error) {
+	query := "SELECT " + projectColumns + ` FROM projects
+		WHERE customer_id = $1 AND deleted_at IS NULL
+		  AND (
+		    id = (SELECT project_id FROM clients WHERE id = $2 AND customer_id = $1)
+		    OR id IN (SELECT project_id FROM client_projects WHERE client_id = $2 AND customer_id = $1)
+		  )
+		ORDER BY created_at, id`
+	rows, err := r.pool.Query(ctx, query, customerID, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list client projects: %w", err)
+	}
+	defer rows.Close()
+
+	var items []*domain.Project
+	for rows.Next() {
+		p, err := scanProject(rows)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: scan client project: %w", err)
+		}
+		items = append(items, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: iterate client projects: %w", err)
+	}
+	return items, nil
 }

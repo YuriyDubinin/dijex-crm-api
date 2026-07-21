@@ -22,6 +22,9 @@ type ClientService interface {
 	UpdateClient(ctx context.Context, customerID uuid.UUID, in service.UpdateClientInput) (*service.ClientItem, error)
 	ListClients(ctx context.Context, customerID uuid.UUID, in service.ListClientsInput) (*service.ListClientsOutput, error)
 	DeleteClient(ctx context.Context, customerID, id uuid.UUID) (*service.DeleteClientOutput, error)
+	AttachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error
+	DetachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error
+	ListClientProjects(ctx context.Context, customerID, clientID uuid.UUID) ([]service.ProjectItem, error)
 }
 
 type ClientHandler struct {
@@ -140,6 +143,79 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, dto.FromDeleteClientOutput(out))
+}
+
+// AttachProject — POST /clients/projects/attach: добавить клиента в проект (M:N).
+func (h *ClientHandler) AttachProject(w http.ResponseWriter, r *http.Request) {
+	principal, ok := principalOr500(w, r, h.logger)
+	if !ok {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+
+	var req dto.ClientProjectHTTPRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_JSON", "invalid JSON body")
+		return
+	}
+	if err := h.validator.Struct(req); err != nil {
+		details := toResponseFieldErrors(validator.TranslateErrors(err))
+		response.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "request validation failed", details...)
+		return
+	}
+	if err := h.service.AttachProject(r.Context(), principal.CustomerID, req.ClientID, req.ProjectID); err != nil {
+		h.writeServiceError(w, r, "attach client project", err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, map[string]string{"status": "ATTACHED"})
+}
+
+// DetachProject — DELETE /clients/projects/detach: убрать клиента из проекта.
+func (h *ClientHandler) DetachProject(w http.ResponseWriter, r *http.Request) {
+	principal, ok := principalOr500(w, r, h.logger)
+	if !ok {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+
+	var req dto.ClientProjectHTTPRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_JSON", "invalid JSON body")
+		return
+	}
+	if err := h.validator.Struct(req); err != nil {
+		details := toResponseFieldErrors(validator.TranslateErrors(err))
+		response.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "request validation failed", details...)
+		return
+	}
+	if err := h.service.DetachProject(r.Context(), principal.CustomerID, req.ClientID, req.ProjectID); err != nil {
+		h.writeServiceError(w, r, "detach client project", err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, map[string]string{"status": "DETACHED"})
+}
+
+// ListProjects — GET /clients/projects/list?client_id=: проекты клиента.
+func (h *ClientHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
+	principal, ok := principalOr500(w, r, h.logger)
+	if !ok {
+		return
+	}
+	clientID := parseUUIDPtr(r.URL.Query().Get("client_id"))
+	if clientID == nil {
+		response.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "client_id is required")
+		return
+	}
+	out, err := h.service.ListClientProjects(r.Context(), principal.CustomerID, *clientID)
+	if err != nil {
+		h.writeServiceError(w, r, "list client projects", err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, dto.FromClientProjects(out))
 }
 
 func (h *ClientHandler) writeServiceError(w http.ResponseWriter, r *http.Request, op string, err error) {

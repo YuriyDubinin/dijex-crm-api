@@ -223,6 +223,50 @@ func (s *ClientService) DeleteClient(ctx context.Context, customerID, id uuid.UU
 	return &DeleteClientOutput{ID: id, DeletedAt: deletedAt}, nil
 }
 
+// AttachProject добавляет клиента в проект (M:N). Клиент и проект должны
+// принадлежать тенанту.
+func (s *ClientService) AttachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error {
+	if _, err := s.repo.GetByID(ctx, customerID, clientID); err != nil {
+		return err
+	}
+	if _, err := s.projects.GetByID(ctx, customerID, projectID); err != nil {
+		return domain.ValidationErrors{{Field: "project_id", Message: "project not found in this tenant"}}
+	}
+	if err := s.repo.AttachProject(ctx, customerID, clientID, projectID); err != nil {
+		return err
+	}
+	s.logger.Info("client attached to project", "client_id", clientID, "project_id", projectID, "customer_id", customerID)
+	return nil
+}
+
+// DetachProject убирает клиента из проекта.
+func (s *ClientService) DetachProject(ctx context.Context, customerID, clientID, projectID uuid.UUID) error {
+	if _, err := s.repo.GetByID(ctx, customerID, clientID); err != nil {
+		return err
+	}
+	if err := s.repo.DetachProject(ctx, customerID, clientID, projectID); err != nil {
+		return err
+	}
+	s.logger.Info("client detached from project", "client_id", clientID, "project_id", projectID, "customer_id", customerID)
+	return nil
+}
+
+// ListClientProjects — все проекты клиента (основной project_id + членства).
+func (s *ClientService) ListClientProjects(ctx context.Context, customerID, clientID uuid.UUID) ([]ProjectItem, error) {
+	if _, err := s.repo.GetByID(ctx, customerID, clientID); err != nil {
+		return nil, err
+	}
+	projects, err := s.repo.ListProjects(ctx, customerID, clientID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ProjectItem, 0, len(projects))
+	for _, p := range projects {
+		out = append(out, *projectToItem(p))
+	}
+	return out, nil
+}
+
 // ───────────────────────── helpers ─────────────────────────
 
 func validateClient(firstName, lastName, companyName, email, status, subjectType string, address, attrs json.RawMessage) domain.ValidationErrors {
